@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 The Nireeti Nest - Deployment Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+        .content { padding: 40px; }
+        .step {
+            margin-bottom: 40px;
+            border-left: 4px solid #b45309;
+            padding-left: 25px;
+        }
+        .step-number {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .step h2 { 
+            color: #1f2937; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .step p { color: #6b7280; margin-bottom: 15px; line-height: 1.8; }
+        .step ul { margin-left: 20px; margin-bottom: 15px; }
+        .step li { color: #6b7280; margin-bottom: 8px; line-height: 1.6; }
+        .code-box {
+            background: #1f2937;
+            color: #10b981;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-size: 0.9rem;
+        }
+        .warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        .warning strong { color: #92400e; }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+        .success strong { color: #065f46; }
+        .link-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin: 5px;
+            font-weight: bold;
+        }
+        .link-btn:hover { opacity: 0.9; }
+        .checklist {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .checklist h3 { margin-bottom: 15px; color: #1f2937; }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .checklist-item input { width: 20px; height: 20px; }
+        .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+        }
+        .emoji { font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 The Nireeti Nest</h1>
+            <p>FREE Hosting Setup Guide - Step by Step</p>
+        </div>
+        
+        <div class="content">
+            <!-- Overview -->
+            <div class="step">
+                <h2><span class="emoji">📋</span> Overview - Kya Karna Hai</h2>
+                <p>Is guide mein hum 3 FREE services use karenge:</p>
+                <ul>
+                    <li><strong>Supabase</strong> - FREE PostgreSQL Database (500MB)</li>
+                    <li><strong>GitHub</strong> - FREE Code Storage</li>
+                    <li><strong>Vercel</strong> - FREE Hosting (100GB/month)</li>
+                </ul>
+                <div class="success">
+                    <strong>💰 Total Cost: ₹0/month - Forever FREE!</strong>
+                </div>
+            </div>
+
+            <!-- Step 1 -->
+            <div class="step">
+                <span class="step-number">1</span>
+                <h2>Supabase Account Banao (Database)</h2>
+                <p>Supabase FREE PostgreSQL database dega.</p>
+                
+                <a href="https://supabase.com" target="_blank" class="link-btn">🔗 Supabase.com Kholo</a>
+                
+                <p><strong>Steps:</strong></p>
+                <ul>
+                    <li>Click karo <strong>"Start your project"</strong></li>
+                    <li><strong>"Continue with GitHub"</strong> se login karo</li>
+                    <li>Authorize karo</li>
+                </ul>
+                
+                <div class="warning">
+                    <strong>📝 Important:</strong> GitHub se login karo, aasan hai!
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step">
+                <span class="step-number">2</span>
+                <h2>Supabase Project Banao</h2>
+                <p>Ab naya database project banao:</p>
+                
+                <ul>
+                    <li><strong>Organization:</strong> Default select karo ya new banao</li>
+                    <li><strong>Project Name:</strong> <code>nireeti-nest</code></li>
+                    <li><strong>Database Password:</strong> Koi strong password dalo (YAAD RAKHO!)</li>
+                    <li><strong>Region:</strong> Southeast Asia (Singapore) select karo</li>
+                    <li>Click karo <strong>"Create new project"</strong></li>
+                </ul>
+                
+                <div class="success">
+                    <strong>⏳ Wait karo 2-3 minutes</strong> - Project setup hota hai
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step">
+                <span class="step-number">3</span>
+                <h2>Database Connection URLs Copy Karo</h2>
+                <p>Project banne ke baad, yeh URLs copy karo:</p>
+                
+                <ul>
+                    <li>Left side mein <strong>"Settings"</strong> (⚙️ gear icon) click karo</li>
+                    <li><strong>"Database"</strong> click karo</li>
+                    <li>Neeche scroll karo <strong>"Connection string"</strong> section tak</li>
+                </ul>
+                
+                <p><strong>Dono URLs copy karo:</strong></p>
+                
+                <div class="code-box">
+<p># DATABASE_URL (Connection Pooler - Port 6543)</p>
+<p>postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1</p>
+<br>
+<p># DIRECT_DATABASE_URL (Direct - Port 5432)</p>
+<p>postgresql://postgres.[PROJECT-REF]:[YOUR-PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres</p>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> 
+                    <ul>
+                        <li>[PROJECT-REF] - Yeh apne aap aa jayega</li>
+                        <li>[YOUR-PASSWORD] - Jo password diya tha woh dalo</li>
+                        <li>Password mein special characters ho toh URL encode karo</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step">
+                <span class="step-number">4</span>
+                <h2>GitHub Repository Banao</h2>
+                
+                <a href="https://github.com/new" target="_blank" class="link-btn">🔗 GitHub New Repo</a>
+                
+                <ul>
+                    <li><strong>Repository name:</strong> nireeti-nest</li>
+                    <li><strong>Description:</strong> The Nireeti Nest - Home Decor eCommerce</li>
+                    <li><strong>Public</strong> select karo (FREE hosting ke liye)</li>
+                    <li>Click karo <strong>"Create repository"</strong></li>
+                </ul>
+                
+                <p>Repository URL note kar lo: <code>https://github.com/YOUR_USERNAME/nireeti-nest</code></p>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="step">
+                <span class="step-number">5</span>
+                <h2>Vercel Account Banao</h2>
+                
+                <a href="https://vercel.com" target="_blank" class="link-btn">🔗 Vercel.com Kholo</a>
+                
+                <ul>
+                    <li>Click karo <strong>"Sign Up"</strong></li>
+                    <li><strong>"Continue with GitHub"</strong> select karo</li>
+                    <li>GitHub authorize karo</li>
+                </ul>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="step">
+                <span class="step-number">6</span>
+                <h2>Vercel Pe Project Import Karo</h2>
+                
+                <ul>
+                    <li>Vercel Dashboard pe <strong>"Add New..."</strong> → <strong>"Project"</strong> click karo</li>
+                    <li><strong>"Import Git Repository"</strong> section mein apna repo dhundho: <code>nireeti-nest</code></li>
+                    <li><strong>"Import"</strong> click karo</li>
+                </ul>
+            </div>
+
+            <!-- Step 7 -->
+            <div class="step">
+                <span class="step-number">7</span>
+                <h2>Environment Variables Add Karo</h2>
+                <p>Deploy se pehle yeh variables ADD karo:</p>
+                
+                <div class="code-box">
+<p>DATABASE_URL</p>
+<p>postgresql://postgres.[REF]:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1</p>
+<br>
+<p>DIRECT_DATABASE_URL</p>
+<p>postgresql://postgres.[REF]:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres</p>
+<br>
+<p>NEXTAUTH_SECRET</p>
+<p>nireeti-nest-super-secret-production-key-2024</p>
+<br>
+<p>EMAIL_HOST</p>
+<p>smtp.zoho.com</p>
+<br>
+<p>EMAIL_PORT</p>
+<p>587</p>
+<br>
+<p>EMAIL_SECURE</p>
+<p>false</p>
+<br>
+<p>EMAIL_USER</p>
+<p>support@thenireetinest.com</p>
+<br>
+<p>EMAIL_PASSWORD</p>
+<p>YOUR_ZOHO_PASSWORD_HERE</p>
+<br>
+<p>EMAIL_FROM</p>
+<p>The Nireeti Nest &lt;support@thenireetinest.com&gt;</p>
+<br>
+<p>NEXT_PUBLIC_SITE_URL</p>
+<p>https://your-site-name.vercel.app</p>
+                </div>
+                
+                <div class="warning">
+                    <strong>📝 Steps:</strong>
+                    <ol>
+                        <li>"Environment Variables" section expand karo</li>
+                        <li>Key dalo (e.g., DATABASE_URL)</li>
+                        <li>Value paste karo</li>
+                        <li>"Add" click karo</li>
+                        <li>Sab variables ke liye repeat karo</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Step 8 -->
+            <div class="step">
+                <span class="step-number">8</span>
+                <h2>Deploy Karo! 🚀</h2>
+                
+                <ul>
+                    <li>Sab variables add karne ke baad <strong>"Deploy"</strong> button click karo</li>
+                    <li>Wait karo 3-5 minutes</li>
+                    <li><strong>"Congratulations!"</strong> screen aayegi</li>
+                </ul>
+                
+                <div class="success">
+                    <strong>🎉 Website Ready!</strong><br>
+                    URL milega: https://nireeti-nest-xyz.vercel.app
+                </div>
+            </div>
+
+            <!-- Step 9 -->
+            <div class="step">
+                <span class="step-number">9</span>
+                <h2>Admin Account Banao</h2>
+                
+                <ul>
+                    <li>Website kholo: https://your-site.vercel.app</li>
+                    <li>Go to: <strong>/auth/register</strong></li>
+                    <li>Apna account banao</li>
+                </ul>
+                
+                <div class="success">
+                    <strong>👑 First User = Admin!</strong><br>
+                    Pehla registered user automatically Admin ban jayega!
+                </div>
+            </div>
+
+            <!-- Checklist -->
+            <div class="checklist">
+                <h3>✅ Checklist</h3>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c1">
+                    <label for="c1">Supabase account bana liya</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c2">
+                    <label for="c2">Supabase project bana liya</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c3">
+                    <label for="c3">Database URLs copy kar liye</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c4">
+                    <label for="c4">GitHub repository bana liya</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c5">
+                    <label for="c5">Vercel account bana liya</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c6">
+                    <label for="c6">Environment variables add kar diye</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c7">
+                    <label for="c7">Deploy kar diya</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="c8">
+                    <label for="c8">Admin account bana liya</label>
+                </div>
+            </div>
+
+            <!-- Help -->
+            <div class="step">
+                <h2><span class="emoji">🆘</span> Agar Problem Aaye</h2>
+                
+                <p><strong>Common Issues:</strong></p>
+                <ul>
+                    <li><strong>Build Failed:</strong> Environment variables check karo</li>
+                    <li><strong>Database Error:</strong> URLs sahi dalo, password check karo</li>
+                    <li><strong>Email Not Working:</strong> Zoho password sahi dalo</li>
+                </ul>
+                
+                <p>Vercel dashboard mein <strong>"Deployments"</strong> → <strong>"Logs"</strong> check karo errors ke liye.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Made with ❤️ for The Nireeti Nest</p>
+            <p>© 2024 All Rights Reserved</p>
+        </div>
+    </div>
+</body>
+</html>
