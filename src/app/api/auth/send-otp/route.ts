@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     } catch (dbError) {
       console.error('Database error:', dbError);
       return NextResponse.json(
-        { error: 'Service temporarily unavailable. Please try again.' },
+        { error: 'Service temporarily unavailable. Please try again later.' },
         { status: 503 }
       );
     }
@@ -82,10 +82,16 @@ export async function POST(request: NextRequest) {
       otp,
     });
 
+    // IMPORTANT: Always return OTP in demo mode for development
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const isEmailNotConfigured = !process.env.SMTP_USER && !process.env.EMAIL_USER;
+    
     return NextResponse.json({
-      message: 'OTP sent to your email',
-      // In development mode, return the OTP for testing
+      success: true,
+      message: emailResult.success ? 'OTP sent to your email' : 'OTP generated (email service unavailable)',
+      // In development or when email not configured, return the OTP for testing
       ...(emailResult.demoOtp && { demoOtp: emailResult.demoOtp }),
+      ...(isDevelopment && isEmailNotConfigured && { demoOtp: otp }),
     });
   } catch (error) {
     console.error('Send OTP error:', error);

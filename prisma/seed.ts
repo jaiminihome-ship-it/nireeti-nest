@@ -1,437 +1,156 @@
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'crypto';
 
 const prisma = new PrismaClient();
 
-// Simple hash function for demo
-async function hashPassword(password: string): Promise<string> {
-  const secret = process.env.NEXTAUTH_SECRET || 'dev-secret';
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + secret);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 async function main() {
-  console.log('Starting seed...');
+  console.log('🌱 Seeding database...\n');
 
-  // Create admin user
-  const adminPassword = await hashPassword('admin123');
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@homedecor.com' },
-    update: {},
-    create: {
-      email: 'admin@homedecor.com',
-      password: adminPassword,
-      name: 'Admin User',
-      role: 'ADMIN',
-    },
-  });
-  console.log('Created admin user:', admin.email);
-
-  // Create demo user
-  const userPassword = await hashPassword('demo123');
-  const demoUser = await prisma.user.upsert({
-    where: { email: 'demo@homedecor.com' },
-    update: {},
-    create: {
-      email: 'demo@homedecor.com',
-      password: userPassword,
-      name: 'Demo User',
-      role: 'USER',
-    },
-  });
-  console.log('Created demo user:', demoUser.email);
-
-  // Create categories
-  const categories = await Promise.all([
-    prisma.category.upsert({
-      where: { slug: 'living-room' },
-      update: {},
-      create: {
-        name: 'Living Room',
-        slug: 'living-room',
-        description: 'Transform your living space with our curated collection',
-        image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80',
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'bedroom' },
-      update: {},
-      create: {
-        name: 'Bedroom',
-        slug: 'bedroom',
-        description: 'Create your perfect sanctuary',
-        image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80',
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'kitchen' },
-      update: {},
-      create: {
-        name: 'Kitchen',
-        slug: 'kitchen',
-        description: 'Modern kitchen essentials',
-        image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'outdoor' },
-      update: {},
-      create: {
-        name: 'Outdoor',
-        slug: 'outdoor',
-        description: 'Patio and garden furniture',
-        image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80',
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'lighting' },
-      update: {},
-      create: {
-        name: 'Lighting',
-        slug: 'lighting',
-        description: 'Illuminate your space beautifully',
-        image: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80',
-      },
-    }),
-    prisma.category.upsert({
-      where: { slug: 'decor' },
-      update: {},
-      create: {
-        name: 'Decor',
-        slug: 'decor',
-        description: 'Finishing touches for every room',
-        image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80',
-      },
-    }),
-  ]);
-  console.log('Created', categories.length, 'categories');
-
-  // Create products
-  const products = [
-    {
-      name: 'Modern Accent Chair',
-      slug: 'modern-accent-chair',
-      description: 'Elegant and comfortable accent chair with solid wood frame and premium fabric upholstery. Perfect for any living room or bedroom.',
-      price: 299.00,
-      comparePrice: 399.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&q=80',
-        'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80',
-      ]),
-      categoryId: categories[0].id,
-      stock: 15,
-      sku: 'AC-001',
-      featured: true,
-      bestSeller: true,
-      guarantee: '2 Year Warranty',
-      warranty: '5 Years',
-    },
-    {
-      name: 'Marble Coffee Table',
-      slug: 'marble-coffee-table',
-      description: 'Stunning marble top coffee table with gold-finished metal legs. A statement piece for modern interiors.',
-      price: 549.00,
-      comparePrice: 699.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&q=80',
-      ]),
-      categoryId: categories[0].id,
-      stock: 8,
-      sku: 'CT-002',
-      featured: true,
-      bestSeller: true,
-      guarantee: '3 Year Warranty',
-      warranty: '7 Years',
-    },
-    {
-      name: 'Velvet Sectional Sofa',
-      slug: 'velvet-sectional-sofa',
-      description: 'Luxurious L-shaped velvet sectional sofa with deep seating and plush cushions. Available in multiple colors.',
-      price: 1899.00,
-      comparePrice: 2299.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80',
-      ]),
-      categoryId: categories[0].id,
-      stock: 3,
-      sku: 'SS-003',
-      featured: true,
-      bestSeller: true,
-      guarantee: '5 Year Warranty',
-      warranty: '10 Years',
-    },
-    {
-      name: 'Platform Bed Frame',
-      slug: 'platform-bed-frame',
-      description: 'Modern platform bed with upholstered headboard and solid wood construction. No box spring needed.',
-      price: 799.00,
-      comparePrice: 999.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&q=80',
-      ]),
-      categoryId: categories[1].id,
-      stock: 10,
-      sku: 'BD-004',
-      featured: true,
-      bestSeller: false,
-      guarantee: '5 Year Warranty',
-      warranty: '10 Years',
-    },
-    {
-      name: 'Minimalist Floor Lamp',
-      slug: 'minimalist-floor-lamp',
-      description: 'Sleek floor lamp with adjustable arm and warm LED lighting. Perfect for reading corners.',
-      price: 149.00,
-      comparePrice: 199.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80',
-      ]),
-      categoryId: categories[4].id,
-      stock: 25,
-      sku: 'FL-005',
-      featured: false,
-      bestSeller: true,
-      guarantee: '1 Year Warranty',
-      warranty: '3 Years',
-    },
-    {
-      name: 'Pendant Light Trio',
-      slug: 'pendant-light-trio',
-      description: 'Set of three matching pendant lights with brass finish. Perfect over kitchen islands or dining tables.',
-      price: 299.00,
-      comparePrice: null,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80',
-      ]),
-      categoryId: categories[4].id,
-      stock: 12,
-      sku: 'PL-006',
-      featured: false,
-      bestSeller: false,
-      guarantee: '2 Year Warranty',
-      warranty: '5 Years',
-    },
-    {
-      name: 'Ceramic Vase Set',
-      slug: 'ceramic-vase-set',
-      description: 'Set of three handcrafted ceramic vases in varying sizes. Beautiful neutral tones.',
-      price: 89.00,
-      comparePrice: 129.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=800&q=80',
-      ]),
-      categoryId: categories[5].id,
-      stock: 30,
-      sku: 'VS-007',
-      featured: true,
-      bestSeller: false,
-      guarantee: null,
-      warranty: null,
-    },
-    {
-      name: 'Wall Art Canvas Set',
-      slug: 'wall-art-canvas-set',
-      description: 'Three-piece abstract canvas art set. Modern design perfect for living rooms or offices.',
-      price: 199.00,
-      comparePrice: null,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1513519245088-0e12902e35a6?w=800&q=80',
-      ]),
-      categoryId: categories[5].id,
-      stock: 20,
-      sku: 'WA-008',
-      featured: false,
-      bestSeller: true,
-      guarantee: null,
-      warranty: null,
-    },
-    {
-      name: 'Kitchen Island Cart',
-      slug: 'kitchen-island-cart',
-      description: 'Mobile kitchen island with butcher block top, storage drawers, and wine rack.',
-      price: 449.00,
-      comparePrice: 599.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80',
-      ]),
-      categoryId: categories[2].id,
-      stock: 7,
-      sku: 'KI-009',
-      featured: false,
-      bestSeller: false,
-      guarantee: '2 Year Warranty',
-      warranty: '5 Years',
-    },
-    {
-      name: 'Patio Dining Set',
-      slug: 'patio-dining-set',
-      description: '6-piece outdoor dining set with weather-resistant wicker and cushions.',
-      price: 1299.00,
-      comparePrice: 1599.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80',
-      ]),
-      categoryId: categories[3].id,
-      stock: 5,
-      sku: 'PD-010',
-      featured: true,
-      bestSeller: true,
-      guarantee: '3 Year Warranty',
-      warranty: '7 Years',
-    },
-    {
-      name: 'Woven Storage Basket',
-      slug: 'woven-storage-basket',
-      description: 'Hand-woven storage basket with lid. Perfect for blankets or toys.',
-      price: 59.00,
-      comparePrice: 79.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=800&q=80',
-      ]),
-      categoryId: categories[5].id,
-      stock: 40,
-      sku: 'SB-011',
-      featured: false,
-      bestSeller: false,
-      guarantee: null,
-      warranty: null,
-    },
-    {
-      name: 'Dresser with Mirror',
-      slug: 'dresser-with-mirror',
-      description: '6-drawer dresser with matching mirror. Solid wood construction with soft-close drawers.',
-      price: 699.00,
-      comparePrice: 899.00,
-      images: JSON.stringify([
-        'https://images.unsplash.com/photo-1558997519-83ea9252edf8?w=800&q=80',
-      ]),
-      categoryId: categories[1].id,
-      stock: 8,
-      sku: 'DR-012',
-      featured: false,
-      bestSeller: false,
-      guarantee: '5 Year Warranty',
-      warranty: '10 Years',
-    },
+  // ==========================================
+  // 1. CREATE CATEGORIES
+  // ==========================================
+  const categories = [
+    { name: 'Living Room', slug: 'living-room', description: 'Transform your living space with our curated collection', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400' },
+    { name: 'Kitchen Decor', slug: 'kitchen-decor', description: 'Beautiful handcrafted kitchen essentials', image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400' },
+    { name: 'Wall Art', slug: 'wall-art', description: 'Stunning wall pieces that tell a story', image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=400' },
+    { name: 'Spiritual', slug: 'spiritual', description: 'Sacred items for your prayer space', image: 'https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=400' },
+    { name: 'Garden', slug: 'garden', description: 'Green essentials for your garden', image: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400' },
+    { name: 'Fragrances', slug: 'fragrances', description: 'Aromatic candles and incense', image: 'https://images.unsplash.com/photo-1602607615394-85f1e7fb8394?w=400' },
+    { name: 'Floor Decor', slug: 'floor-decor', description: 'Rugs, dhurries and floor coverings', image: 'https://images.unsplash.com/photo-1600166898405-da9535204843?w=400' },
+    { name: 'Gifts', slug: 'gifts', description: 'Thoughtful gifts for loved ones', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400' },
   ];
 
-  for (const product of products) {
-    await prisma.product.upsert({
-      where: { slug: product.slug },
-      update: product,
-      create: product,
-    });
+  console.log('📁 Creating categories...');
+  for (const cat of categories) {
+    const existing = await prisma.category.findUnique({ where: { slug: cat.slug } });
+    if (!existing) {
+      await prisma.category.create({ data: cat });
+      console.log(`   ✅ ${cat.name}`);
+    } else {
+      console.log(`   ⏭️  ${cat.name} (exists)`);
+    }
   }
-  console.log('Created', products.length, 'products');
 
-  // Create banners
+  // ==========================================
+  // 2. CREATE BANNERS
+  // ==========================================
   const banners = [
-    {
-      title: 'Summer Sale 2024',
-      subtitle: 'Up to 50% off on selected items',
-      image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1920&q=80',
-      link: '/offers',
-      isActive: true,
-      order: 1,
-    },
-    {
-      title: 'New Arrivals',
-      subtitle: 'Check out our latest collection',
-      image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1920&q=80',
-      link: '/shop',
-      isActive: true,
-      order: 2,
-    },
-    {
-      title: 'Free Shipping',
-      subtitle: 'On orders over $100',
-      image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1920&q=80',
-      link: '/shop',
-      isActive: true,
-      order: 3,
-    },
+    { title: 'New Collection 2024', subtitle: 'Discover our latest handcrafted pieces', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1920', link: '/shop', order: 1 },
+    { title: 'Diwali Special', subtitle: 'Up to 30% off on festive collection', image: 'https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1920', link: '/offers', order: 2 },
+    { title: 'Handcrafted with Love', subtitle: 'Each piece tells a unique story', image: 'https://images.unsplash.com/photo-1618221118493-9cfa1a1c00da?w=1920', link: '/about', order: 3 },
   ];
 
+  console.log('\n🖼️ Creating banners...');
   for (const banner of banners) {
-    await prisma.banner.upsert({
-      where: { id: `banner-${banner.order}` },
-      update: banner,
-      create: banner,
-    });
+    const existing = await prisma.banner.findFirst({ where: { title: banner.title } });
+    if (!existing) {
+      await prisma.banner.create({ data: { ...banner, isActive: true } });
+      console.log(`   ✅ ${banner.title}`);
+    } else {
+      console.log(`   ⏭️  ${banner.title} (exists)`);
+    }
   }
-  console.log('Created', banners.length, 'banners');
 
-  // Create testimonials
+  // ==========================================
+  // 3. CREATE TESTIMONIALS
+  // ==========================================
   const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Interior Designer',
-      content: 'The quality of furniture from HomeDecor is exceptional. Every piece I\'ve ordered has exceeded my expectations. The attention to detail and craftsmanship is remarkable.',
-      rating: 5,
-      isActive: true,
-    },
-    {
-      name: 'Michael Chen',
-      role: 'Homeowner',
-      content: 'I\'ve been shopping here for years and they never disappoint. The customer service is outstanding and the products are always top-notch. Highly recommended!',
-      rating: 5,
-      isActive: true,
-    },
-    {
-      name: 'Emily Rodriguez',
-      role: 'Architect',
-      content: 'As an architect, I appreciate the blend of aesthetics and functionality in their products. HomeDecor has become my go-to for all my design projects.',
-      rating: 5,
-      isActive: true,
-    },
+    { name: 'Priya Sharma', role: 'Interior Designer', company: 'Mumbai', content: 'Beautiful products! The quality is amazing and delivery was quick. Highly recommend The Nireeti Nest for authentic home decor.', rating: 5, isFeatured: true },
+    { name: 'Rahul Mehta', role: 'Homeowner', company: 'Delhi', content: 'Love the handcrafted items. Each piece tells a story. Will definitely shop again!', rating: 5, isFeatured: true },
+    { name: 'Anjali Patel', role: 'Business Owner', company: 'Bangalore', content: 'Perfect gifts for housewarming. The packaging was beautiful and products are top-notch.', rating: 5, isFeatured: true },
   ];
 
-  for (const testimonial of testimonials) {
-    await prisma.testimonial.create({
-      data: testimonial,
-    });
+  console.log('\n💬 Creating testimonials...');
+  for (const testi of testimonials) {
+    const existing = await prisma.testimonial.findFirst({ where: { name: testi.name } });
+    if (!existing) {
+      await prisma.testimonial.create({ data: { ...testi, isActive: true } });
+      console.log(`   ✅ ${testi.name}`);
+    } else {
+      console.log(`   ⏭️  ${testi.name} (exists)`);
+    }
   }
-  console.log('Created', testimonials.length, 'testimonials');
 
-  // Create sample coupon
-  await prisma.coupon.upsert({
-    where: { code: 'WELCOME10' },
-    update: {},
-    create: {
-      code: 'WELCOME10',
-      discountType: 'PERCENTAGE',
-      discountValue: 10,
-      minPurchase: 50,
-      maxUses: 100,
-      isActive: true,
-    },
-  });
-  console.log('Created sample coupon: WELCOME10');
+  // ==========================================
+  // 4. CREATE SAMPLE PRODUCTS
+  // ==========================================
+  const livingRoomCategory = await prisma.category.findUnique({ where: { slug: 'living-room' } });
+  
+  if (livingRoomCategory) {
+    const products = [
+      { name: 'Handcrafted Cotton Throw', slug: 'handcrafted-cotton-throw', description: 'Beautiful handwoven cotton throw blanket for your living room. Made by skilled artisans using traditional techniques.', price: 2499, comparePrice: 2999, images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600'], stock: 50, featured: true, bestSeller: true },
+      { name: 'Macrame Wall Hanging', slug: 'macrame-wall-hanging', description: 'Beautiful handmade macrame wall art for boho decor. Crafted with premium cotton cord.', price: 1799, comparePrice: 2199, images: ['https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=600'], stock: 30, featured: true },
+      { name: 'Ceramic Vase Set', slug: 'ceramic-vase-set', description: 'Elegant ceramic vase set for modern home decor. Set of 3 vases in complementary sizes.', price: 1899, comparePrice: 2299, images: ['https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=600'], stock: 25, bestSeller: true },
+    ];
 
-  // Create sample offer
-  await prisma.offer.create({
-    data: {
-      title: 'Summer Flash Sale',
-      description: 'Get 20% off on all outdoor furniture',
-      discountType: 'PERCENTAGE',
-      discountValue: 20,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-      categoryId: categories[3].id, // Outdoor
-      isActive: true,
-    },
-  });
-  console.log('Created sample offer');
+    console.log('\n🛍️ Creating sample products...');
+    for (const prod of products) {
+      const existing = await prisma.product.findUnique({ where: { slug: prod.slug } });
+      if (!existing) {
+        await prisma.product.create({
+          data: {
+            ...prod,
+            categoryId: livingRoomCategory.id,
+            images: JSON.stringify(prod.images),
+            isNew: true,
+          }
+        });
+        console.log(`   ✅ ${prod.name}`);
+      } else {
+        console.log(`   ⏭️  ${prod.name} (exists)`);
+      }
+    }
+  }
 
-  console.log('Seed completed successfully!');
+  // ==========================================
+  // 5. CREATE SITE SETTINGS
+  // ==========================================
+  const settings = [
+    { key: 'site_name', value: 'The Nireeti Nest', type: 'text', group: 'general', description: 'Website name' },
+    { key: 'site_tagline', value: 'Premium Home Decor & Lifestyle', type: 'text', group: 'general', description: 'Site tagline' },
+    { key: 'primary_color', value: '#b45309', type: 'color', group: 'appearance', description: 'Primary brand color' },
+    { key: 'currency', value: 'INR', type: 'text', group: 'store', description: 'Currency code' },
+    { key: 'free_shipping_threshold', value: '999', type: 'number', group: 'shipping', description: 'Free shipping above this amount' },
+  ];
+
+  console.log('\n⚙️ Creating site settings...');
+  for (const setting of settings) {
+    const existing = await prisma.siteSetting.findUnique({ where: { key: setting.key } });
+    if (!existing) {
+      await prisma.siteSetting.create({ data: setting });
+      console.log(`   ✅ ${setting.key}`);
+    } else {
+      console.log(`   ⏭️  ${setting.key} (exists)`);
+    }
+  }
+
+  // ==========================================
+  // 6. CREATE FAQ
+  // ==========================================
+  const faqs = [
+    { question: 'What is your return policy?', answer: 'We offer a 7-day return policy for all unused items in original packaging. Please contact us within 7 days of delivery.', category: 'Shipping & Returns', order: 1 },
+    { question: 'How long does shipping take?', answer: 'Standard shipping takes 5-7 business days. Express shipping is available for select locations at an additional cost.', category: 'Shipping & Returns', order: 2 },
+    { question: 'Do you ship internationally?', answer: 'Currently, we only ship within India. International shipping will be available soon!', category: 'Shipping & Returns', order: 3 },
+    { question: 'Are your products handmade?', answer: 'Yes! Most of our products are handcrafted by skilled artisans across India, making each piece unique.', category: 'Products', order: 4 },
+    { question: 'How do I track my order?', answer: 'Once your order ships, you will receive an email with tracking information. You can also track your order from your account.', category: 'Orders', order: 5 },
+  ];
+
+  console.log('\n❓ Creating FAQs...');
+  for (const faq of faqs) {
+    const existing = await prisma.fAQ.findFirst({ where: { question: faq.question } });
+    if (!existing) {
+      await prisma.fAQ.create({ data: { ...faq, isActive: true } });
+      console.log(`   ✅ ${faq.question.substring(0, 30)}...`);
+    } else {
+      console.log(`   ⏭️  FAQ exists`);
+    }
+  }
+
+  console.log('\n✅ Seeding completed successfully!');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seeding failed:', e);
     process.exit(1);
   })
   .finally(async () => {
