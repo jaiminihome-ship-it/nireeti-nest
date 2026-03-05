@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+// Loading fallback component
+function ResetPasswordLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50 flex items-center justify-center py-12 px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber-600" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component that uses useSearchParams
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -96,10 +111,10 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
             <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-2xl">H</span>
+              <span className="text-white font-bold text-2xl">N</span>
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-amber-700 to-amber-900 bg-clip-text text-transparent">
-              HomeDecor
+              The Nireeti Nest
             </span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-6">Reset Password</h1>
@@ -197,5 +212,14 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Page component with Suspense wrapper
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordLoading />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
