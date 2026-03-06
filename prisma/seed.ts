@@ -2,11 +2,48 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Same secret as in auth.ts
+const TOKEN_SECRET = process.env.NEXTAUTH_SECRET || 'nireeti-nest-super-secret-key-2024-production';
+
+// Same hash function as in auth.ts
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + TOKEN_SECRET);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function main() {
   console.log('🌱 Seeding database...\n');
 
   // ==========================================
-  // 1. CREATE CATEGORIES
+  // 1. CREATE ADMIN USER FIRST
+  // ==========================================
+  const adminEmail = 'admin@thenireetinest.com';
+  const adminPassword = 'Admin@123456';
+  const hashedPassword = await hashPassword(adminPassword);
+
+  console.log('👤 Creating admin user...');
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      password: hashedPassword,
+      role: 'ADMIN',
+      name: 'Admin',
+    },
+    create: {
+      email: adminEmail,
+      password: hashedPassword,
+      name: 'Admin',
+      role: 'ADMIN',
+    },
+  });
+  console.log(`   ✅ Admin created: ${admin.email}`);
+  console.log(`   🔑 Password: ${adminPassword}`);
+
+  // ==========================================
+  // 2. CREATE CATEGORIES
   // ==========================================
   const categories = [
     { name: 'Living Room', slug: 'living-room', description: 'Transform your living space with our curated collection', image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400' },
@@ -19,7 +56,7 @@ async function main() {
     { name: 'Gifts', slug: 'gifts', description: 'Thoughtful gifts for loved ones', image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400' },
   ];
 
-  console.log('📁 Creating categories...');
+  console.log('\n📁 Creating categories...');
   for (const cat of categories) {
     const existing = await prisma.category.findUnique({ where: { slug: cat.slug } });
     if (!existing) {
@@ -31,12 +68,12 @@ async function main() {
   }
 
   // ==========================================
-  // 2. CREATE BANNERS
+  // 3. CREATE BANNERS
   // ==========================================
   const banners = [
     { title: 'New Collection 2024', subtitle: 'Discover our latest handcrafted pieces', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1920', link: '/shop', order: 1 },
-    { title: 'Diwali Special', subtitle: 'Up to 30% off on festive collection', image: 'https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1920', link: '/offers', order: 2 },
-    { title: 'Handcrafted with Love', subtitle: 'Each piece tells a unique story', image: 'https://images.unsplash.com/photo-1618221118493-9cfa1a1c00da?w=1920', link: '/about', order: 3 },
+    { title: 'Diwali Special', subtitle: 'Up to 30% off on festive collection', image: 'https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1920', link: '/shop', order: 2 },
+    { title: 'Handcrafted with Love', subtitle: 'Each piece tells a unique story', image: 'https://images.unsplash.com/photo-1618221118493-9cfa1a1c00da?w=1920', link: '/shop', order: 3 },
   ];
 
   console.log('\n🖼️ Creating banners...');
@@ -51,7 +88,7 @@ async function main() {
   }
 
   // ==========================================
-  // 3. CREATE TESTIMONIALS
+  // 4. CREATE TESTIMONIALS
   // ==========================================
   const testimonials = [
     { name: 'Priya Sharma', role: 'Interior Designer', company: 'Mumbai', content: 'Beautiful products! The quality is amazing and delivery was quick. Highly recommend The Nireeti Nest for authentic home decor.', rating: 5, isFeatured: true },
@@ -71,10 +108,10 @@ async function main() {
   }
 
   // ==========================================
-  // 4. CREATE SAMPLE PRODUCTS
+  // 5. CREATE SAMPLE PRODUCTS
   // ==========================================
   const livingRoomCategory = await prisma.category.findUnique({ where: { slug: 'living-room' } });
-  
+
   if (livingRoomCategory) {
     const products = [
       { name: 'Handcrafted Cotton Throw', slug: 'handcrafted-cotton-throw', description: 'Beautiful handwoven cotton throw blanket for your living room. Made by skilled artisans using traditional techniques.', price: 2499, comparePrice: 2999, images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600'], stock: 50, featured: true, bestSeller: true },
@@ -102,7 +139,7 @@ async function main() {
   }
 
   // ==========================================
-  // 5. CREATE SITE SETTINGS
+  // 6. CREATE SITE SETTINGS
   // ==========================================
   const settings = [
     { key: 'site_name', value: 'The Nireeti Nest', type: 'text', group: 'general', description: 'Website name' },
@@ -124,7 +161,7 @@ async function main() {
   }
 
   // ==========================================
-  // 6. CREATE FAQ
+  // 7. CREATE FAQ
   // ==========================================
   const faqs = [
     { question: 'What is your return policy?', answer: 'We offer a 7-day return policy for all unused items in original packaging. Please contact us within 7 days of delivery.', category: 'Shipping & Returns', order: 1 },
@@ -146,6 +183,9 @@ async function main() {
   }
 
   console.log('\n✅ Seeding completed successfully!');
+  console.log('\n📝 Admin Login Credentials:');
+  console.log('   Email: admin@thenireetinest.com');
+  console.log('   Password: Admin@123456');
 }
 
 main()

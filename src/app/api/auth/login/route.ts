@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     } catch (dbError) {
       console.error('Database error:', dbError);
       return NextResponse.json(
-        { error: 'Service temporarily unavailable. Please try again.' },
+        { error: 'Database connection failed. Please check if DATABASE_URL is configured.' },
         { status: 503 }
       );
     }
