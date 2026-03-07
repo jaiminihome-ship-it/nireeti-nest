@@ -39,4 +39,10 @@ export async function POST(request: Request) {
 
     const data = await request.json();
     
-    // Validate required 
+    // Validate required fields
+    if (!data.title || !data.image) {
+      return NextResponse.json(
+        { error: 'Title and Image are required' },
+        { status: 400 }
+      );
+    }
