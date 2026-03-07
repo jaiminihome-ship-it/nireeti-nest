@@ -1,18 +1,19 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User } from '@/types';
 
 interface AuthStore {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  hydrated: boolean;
 
-  // Actions
   setUser: (user: User, token: string) => void;
   logout: () => void;
-  updateUser: (user: Partial<User>) => void;
+  updateUser: (userData: Partial<User>) => void;
+  setHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -21,6 +22,9 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
+      hydrated: false,
+
+      setHydrated: (state: boolean) => set({ hydrated: state }),
 
       setUser: (user: User, token: string) => {
         set({ user, token, isAuthenticated: true });
@@ -37,7 +41,12 @@ export const useAuthStore = create<AuthStore>()(
       },
     }),
     {
-      name: 'homedecor-auth',
+      name: 'nireeti-auth',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     }
   )
 );

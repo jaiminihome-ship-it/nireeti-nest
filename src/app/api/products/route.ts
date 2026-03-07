@@ -1,217 +1,64 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
-import { generateSlug, safeJsonParse } from '@/lib/utils';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
-// GET /api/products - Get all products with filters
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '12');
     const featured = searchParams.get('featured') === 'true';
     const bestSeller = searchParams.get('bestSeller') === 'true';
     const isNew = searchParams.get('isNew') === 'true';
     const search = searchParams.get('search');
-
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '12');
     const skip = (page - 1) * limit;
 
-    // Build filter
     const where: Record<string, unknown> = {};
-
-    if (category) {
-      where.category = { slug: category };
-    }
-
-    if (featured) {
-      where.featured = true;
-    }
-
-    if (bestSeller) {
-      where.bestSeller = true;
-    }
-
-    if (isNew) {
-      where.isNew = true;
-    }
-
+    if (category) where.categoryId = category;
+    if (featured) where.featured = true;
+    if (bestSeller) where.bestSeller = true;
+    if (isNew) where.isNew = true;
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } },
-        { tags: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    // Get total count
-    const total = await db.product.count({ where });
-
-    // Get products
-    const products = await db.product.findMany({
-      where,
-      include: {
-        category: true,
-        offers: {
-          where: {
-            isActive: true,
-            endDate: { gte: new Date() },
-            startDate: { lte: new Date() },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    });
-
-    // Parse images and videos from JSON strings
-    const parsedProducts = products.map((product) => ({
-      ...product,
-      images: safeJsonParse<string[]>(product.images, []),
-      videos: product.videos ? safeJsonParse<string[]>(product.videos, []) : [],
-    }));
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: { category: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
 
     return NextResponse.json({
-      data: parsedProducts,
+      data: products.map(p => ({ ...p, images: JSON.parse(p.images || '[]') })),
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Get products error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Products error:', error);
+    return NextResponse.json({ data: [], total: 0, page: 1, limit: 12, totalPages: 0 });
   }
 }
 
-// POST /api/products - Create new product (Admin only)
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const data = await request.json();
+    if (data.images && Array.isArray(data.images)) {
+      data.images = JSON.stringify(data.images);
     }
-
-    const body = await request.json();
-    const {
-      name,
-      slug,
-      description,
-      shortDesc,
-      price,
-      comparePrice,
-      images,
-      videos,
-      categoryId,
-      stock,
-      sku,
-      barcode,
-      featured,
-      bestSeller,
-      isNew,
-      // Delivery & Returns
-      deliveryTime,
-      deliveryCost,
-      returnPolicy,
-      // Guarantee & Warranty
-      guarantee,
-      warranty,
-      // Specifications
-      material,
-      dimensions,
-      weight,
-      color,
-      style,
-      assembly,
-      // SEO
-      metaTitle,
-      metaDesc,
-      tags,
-    } = body;
-
-    // Validate required fields
-    if (!name || !description || !price || !categoryId) {
-      return NextResponse.json(
-        { error: 'Name, description, price, and category are required' },
-        { status: 400 }
-      );
-    }
-
-    // Generate slug if not provided
-    const productSlug = slug || generateSlug(name);
-
-    // Check if slug exists
-    const existingProduct = await db.product.findUnique({
-      where: { slug: productSlug },
-    });
-
-    if (existingProduct) {
-      return NextResponse.json(
-        { error: 'Product with this slug already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Create product
-    const product = await db.product.create({
-      data: {
-        name,
-        slug: productSlug,
-        description,
-        shortDesc: shortDesc || null,
-        price: parseFloat(price),
-        comparePrice: comparePrice ? parseFloat(comparePrice) : null,
-        images: JSON.stringify(images || []),
-        videos: videos ? JSON.stringify(videos) : null,
-        categoryId,
-        stock: parseInt(stock) || 0,
-        sku: sku || null,
-        barcode: barcode || null,
-        featured: featured || false,
-        bestSeller: bestSeller || false,
-        isNew: isNew !== false,
-        // Delivery & Returns
-        deliveryTime: deliveryTime || null,
-        deliveryCost: deliveryCost ? parseFloat(deliveryCost) : 0,
-        returnPolicy: returnPolicy || null,
-        // Guarantee & Warranty
-        guarantee: guarantee || null,
-        warranty: warranty || null,
-        // Specifications
-        material: material || null,
-        dimensions: dimensions || null,
-        weight: weight || null,
-        color: color || null,
-        style: style || null,
-        assembly: assembly || null,
-        // SEO
-        metaTitle: metaTitle || null,
-        metaDesc: metaDesc || null,
-        tags: tags || null,
-      },
-      include: {
-        category: true,
-      },
-    });
-
-    return NextResponse.json({
-      ...product,
-      images: safeJsonParse<string[]>(product.images, []),
-      videos: product.videos ? safeJsonParse<string[]>(product.videos, []) : [],
-    });
+    const product = await prisma.product.create({ data, include: { category: true } });
+    return NextResponse.json({ ...product, images: JSON.parse(product.images || '[]') });
   } catch (error) {
     console.error('Create product error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
   }
 }

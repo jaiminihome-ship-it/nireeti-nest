@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { sendSMS } from '@/lib/sms';
+import { sendEmail } from '@/lib/email';
 
 // GET /api/orders - Get all orders (Admin) or user's orders
 export async function GET(request: NextRequest) {
@@ -184,7 +186,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(order);
+    // Generate order number
+    const orderNumber = `TNN${Date.now().toString(36).toUpperCase()}`;
+
+    // Send order confirmation notifications (SMS + Email)
+    try {
+      // Send SMS if phone number is provided
+      if (customerPhone) {
+        await sendSMS(customerPhone, 'order-confirmation', {
+          orderNumber,
+          total: total.toString(),
+        });
+      }
+
+      // Send email confirmation
+      await sendEmail(customerEmail, 'order-confirm', {
+        name: customerName,
+        orderNumber,
+        total: total.toString(),
+      });
+    } catch (notificationError) {
+      // Log error but don't fail the order
+      console.error('Failed to send order confirmation:', notificationError);
+    }
+
+    return NextResponse.json({ ...order, orderNumber });
   } catch (error) {
     console.error('Create order error:', error);
     return NextResponse.json(

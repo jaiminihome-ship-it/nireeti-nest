@@ -1,123 +1,51 @@
-import { db } from '@/lib/db';
-import type { User } from '@/types';
+import { prisma } from '@/lib/db';
+import type { User } from '@prisma/client';
 import { cookies } from 'next/headers';
-import { NextRequest } from 'next/server';
+import crypto from 'crypto';
 
-// Simple JWT-like token generation (for demo purposes)
-// In production, use a proper JWT library
-
-const TOKEN_SECRET = process.env.NEXTAUTH_SECRET || 'dev-secret-key-change-in-production';
+const TOKEN_SECRET = process.env.NEXTAUTH_SECRET || 'nireeti-nest-super-secret-key-2024-production';
 
 export function generateToken(userId: string, email: string, role: string): string {
-  const payload = {
-    userId,
-    email,
-    role,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-    iat: Date.now(),
-  };
+  const payload = { userId, email, role, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
   return Buffer.from(JSON.stringify(payload)).toString('base64url');
 }
 
 export function verifyToken(token: string): { userId: string; email: string; role: string } | null {
   try {
     const decoded = JSON.parse(Buffer.from(token, 'base64url').toString());
-    if (decoded.exp < Date.now()) {
-      return null;
-    }
-    return {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-    };
+    if (decoded.exp < Date.now()) return null;
+    return decoded;
   } catch {
     return null;
   }
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  // Simple hash for demo - in production use bcrypt or argon2
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + TOKEN_SECRET);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return crypto.createHmac('sha256', TOKEN_SECRET).update(password).digest('hex');
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  const hash = await hashPassword(password);
-  return hash === hashedPassword;
+export async function verifyPassword(password: string, hashed: string): Promise<boolean> {
+  return hashPassword(password).then(h => h === hashed);
 }
 
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) {
-      return null;
-    }
-
+    const token = (await cookies()).get('auth-token')?.value;
+    if (!token) return null;
+    
     const decoded = verifyToken(token);
-    if (!decoded) {
-      return null;
-    }
+    if (!decoded) return null;
 
-    const user = await db.user.findUnique({
-      where: { id: decoded.userId },
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    return {
-      ...user,
-      role: user.role as 'USER' | 'ADMIN',
-    };
+    return prisma.user.findUnique({ where: { id: decoded.userId } });
   } catch {
     return null;
   }
-}
-
-export async function getUserFromRequest(request: NextRequest): Promise<User | null> {
-  try {
-    const token = request.cookies.get('auth-token')?.value;
-
-    if (!token) {
-      return null;
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return null;
-    }
-
-    const user = await db.user.findUnique({
-      where: { id: decoded.userId },
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    return {
-      ...user,
-      role: user.role as 'USER' | 'ADMIN',
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function isAdmin(user: User | null): boolean {
-  return user?.role === 'ADMIN';
 }
 
 export function setAuthCookie(token: string): string {
-  return `auth-token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${7 * 24 * 60 * 60}`;
+  return `auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}; Secure`;
 }
 
 export function clearAuthCookie(): string {
-  return 'auth-token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0';
+  return 'auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
 }

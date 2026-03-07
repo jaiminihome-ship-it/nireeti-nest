@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSettingsStore } from '@/store/settings-store';
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const initialized = useRef(false);
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
   const applyTheme = useSettingsStore((state) => state.applyTheme);
+  const hydrated = useSettingsStore((state) => state.hydrated);
 
   useEffect(() => {
-    // Fetch settings on mount
-    fetchSettings();
+    if (!initialized.current) {
+      initialized.current = true;
+      fetchSettings();
+    }
   }, [fetchSettings]);
 
   useEffect(() => {
-    // Apply theme when settings change
-    applyTheme();
-  }, [applyTheme]);
+    if (hydrated) {
+      applyTheme();
+    }
+  }, [hydrated, applyTheme]);
 
   return <>{children}</>;
 }

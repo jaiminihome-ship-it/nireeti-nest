@@ -1,26 +1,25 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Product, CartItem, Coupon } from '@/types';
 
 interface CartStore {
   items: CartItem[];
   coupon: Coupon | null;
   discount: number;
+  hydrated: boolean;
 
-  // Actions
   addItem: (product: Product, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   applyCoupon: (coupon: Coupon, discount: number) => void;
   removeCoupon: () => void;
-
-  // Computed
   getTotal: () => number;
   getSubtotal: () => number;
   getItemCount: () => number;
+  setHydrated: (state: boolean) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -29,6 +28,9 @@ export const useCartStore = create<CartStore>()(
       items: [],
       coupon: null,
       discount: 0,
+      hydrated: false,
+
+      setHydrated: (state: boolean) => set({ hydrated: state }),
 
       addItem: (product: Product, quantity = 1) => {
         set((state) => {
@@ -109,7 +111,12 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'homedecor-cart',
+      name: 'nireeti-cart',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ items: state.items, coupon: state.coupon, discount: state.discount }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true);
+      },
     }
   )
 );

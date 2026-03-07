@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useSyncExternalStore, useCallback } from 'react';
 import { ShoppingCart, User, Menu, X, Search, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,16 +25,40 @@ const navLinks = [
   { href: '/gifts', label: 'Gifts' },
 ];
 
+// Simple empty subscribe function for useSyncExternalStore
+const emptySubscribe = () => () => {};
+
+// Get snapshot for client-side only values
+function getClientSnapshot() {
+  return true;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
 export default function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  
+
+  // This safely handles client-only rendering
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  );
+
   const { settings } = useSettingsStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const { user, isAuthenticated, logout } = useAuthStore();
 
   const isAdmin = user?.role === 'ADMIN';
+
+  // Safe defaults during SSR
+  const primaryColor = settings?.primaryColor || '#B45309';
+  const siteName = settings?.siteName || 'The Nireeti Nest';
+  const logoUrl = settings?.logoUrl || '';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md shadow-sm">
@@ -42,27 +66,27 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            {settings.logoUrl ? (
+            {logoUrl ? (
               <img
-                src={settings.logoUrl}
-                alt={settings.siteName}
+                src={logoUrl}
+                alt={siteName}
                 className="h-10 w-auto object-contain"
               />
             ) : (
-              <div 
+              <div
                 className="h-10 w-10 rounded-lg flex items-center justify-center shadow-lg"
-                style={{ background: `linear-gradient(135deg, ${settings.primaryColor}, ${settings.secondaryColor})` }}
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${settings?.secondaryColor || '#D2691E'})` }}
               >
                 <span className="text-white font-bold text-xl">
-                  {settings.siteName.charAt(0).toUpperCase()}
+                  {siteName.charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
-            <span 
+            <span
               className="text-xl font-bold"
-              style={{ color: settings.primaryColor }}
+              style={{ color: primaryColor }}
             >
-              {settings.siteName}
+              {siteName}
             </span>
           </Link>
 
@@ -77,12 +101,12 @@ export default function Header() {
                     ? 'border-b-2 pb-1'
                     : ''
                 }`}
-                style={{ 
-                  color: pathname === link.href ? settings.primaryColor : '#374151',
-                  borderColor: pathname === link.href ? settings.primaryColor : 'transparent'
+                style={{
+                  color: pathname === link.href ? primaryColor : '#374151',
+                  borderColor: pathname === link.href ? primaryColor : 'transparent'
                 }}
-                onMouseOver={(e) => e.currentTarget.style.color = settings.primaryColor}
-                onMouseOut={(e) => e.currentTarget.style.color = pathname === link.href ? settings.primaryColor : '#374151'}
+                onMouseOver={(e) => e.currentTarget.style.color = primaryColor}
+                onMouseOut={(e) => e.currentTarget.style.color = pathname === link.href ? primaryColor : '#374151'}
               >
                 {link.label}
               </Link>
@@ -110,10 +134,10 @@ export default function Header() {
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <Badge 
+                {mounted && itemCount > 0 && (
+                  <Badge
                     className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs text-white"
-                    style={{ backgroundColor: settings.primaryColor }}
+                    style={{ backgroundColor: primaryColor }}
                   >
                     {itemCount}
                   </Badge>
@@ -122,7 +146,7 @@ export default function Header() {
             </Link>
 
             {/* User Menu */}
-            {isAuthenticated ? (
+            {mounted && isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -192,13 +216,13 @@ export default function Header() {
                   className={`text-sm font-medium ${
                     pathname === link.href ? '' : 'text-gray-700'
                   }`}
-                  style={{ color: pathname === link.href ? settings.primaryColor : '#374151' }}
+                  style={{ color: pathname === link.href ? primaryColor : '#374151' }}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
-              {!isAuthenticated && (
+              {!(mounted && isAuthenticated) && (
                 <Link
                   href="/auth/login"
                   className="text-sm font-medium text-gray-700"

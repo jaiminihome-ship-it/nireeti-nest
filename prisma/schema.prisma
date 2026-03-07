@@ -1,14 +1,12 @@
-// Development Schema for SQLite (Local)
-// Use this for local development
-// Production uses Supabase PostgreSQL
-
+// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -28,7 +26,6 @@ model User {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   orders        Order[]
-  giftOrders    GiftOrder[]
 }
 
 model Category {
@@ -43,44 +40,40 @@ model Category {
 }
 
 model Product {
-  id              String      @id @default(cuid())
-  name            String
-  slug            String      @unique
-  description     String
-  shortDesc       String?
-  price           Float
-  comparePrice    Float?
-  images          String      @default("[]")
-  videos          String?
-  categoryId      String
-  category        Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  stock           Int         @default(0)
-  sku             String?
-  barcode         String?
-  featured        Boolean     @default(false)
-  bestSeller      Boolean     @default(false)
-  isNew           Boolean     @default(false)
-  guarantee       String?
-  warranty        String?
-  returnPolicy    String?
-  deliveryTime    String?
-  deliveryCost    Float?      @default(0)
-  material        String?
-  dimensions      String?
-  weight          String?
-  color           String?
-  style           String?
-  assembly        String?
-  metaTitle       String?
-  metaDesc        String?
-  tags            String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  orderItems      OrderItem[]
-  offers          Offer[]
-  giftOrders      GiftOrder[]
-  cartItems       CartItem[]
-  reviews         Review[]
+  id           String      @id @default(cuid())
+  name         String
+  slug         String      @unique
+  description  String
+  shortDesc    String?
+  price        Float
+  comparePrice Float?
+  images       String      @default("[]")
+  videos       String?
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  stock        Int         @default(0)
+  sku          String?
+  barcode      String?
+  featured     Boolean     @default(false)
+  bestSeller   Boolean     @default(false)
+  isNew        Boolean     @default(false)
+  guarantee    String?
+  warranty     String?
+  returnPolicy String?
+  deliveryTime String?
+  deliveryCost Float?      @default(0)
+  material     String?
+  dimensions   String?
+  weight       String?
+  color        String?
+  style        String?
+  assembly     String?
+  metaTitle    String?
+  metaDesc     String?
+  tags         String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  orderItems   OrderItem[]
 }
 
 model Order {
@@ -126,86 +119,21 @@ model OrderItem {
   total       Float
 }
 
-model Offer {
-  id            String   @id @default(cuid())
-  title         String
-  description   String?
-  discountType  String   @default("PERCENTAGE")
-  discountValue Float
-  startDate     DateTime
-  endDate       DateTime
-  productId     String?
-  product       Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  categoryId    String?
-  bannerImage   String?
-  bannerText    String?
-  minPurchase   Float?
-  maxDiscount   Float?
-  usageLimit    Int?
-  usedCount     Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Coupon {
-  id            String    @id @default(cuid())
-  code          String    @unique
-  discountType  String    @default("PERCENTAGE")
-  discountValue Float
-  minPurchase   Float?
-  maxDiscount   Float?
-  maxUses       Int?
-  usedCount     Int       @default(0)
-  expiryDate    DateTime?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-model GiftOrder {
-  id              String   @id @default(cuid())
-  orderNumber     String   @unique @default(cuid())
-  senderId        String
-  sender          User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  receiverName    String
-  receiverPhone   String
-  receiverEmail   String?
-  receiverAddress String
-  receiverCity    String?
-  receiverState   String?
-  receiverZip     String?
-  message         String?
-  deliveryDate    DateTime?
-  giftWrap        Boolean  @default(false)
-  giftWrapType    String?
-  giftWrapPrice   Float    @default(0)
-  isAnonymous     Boolean  @default(false)
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  quantity        Int
-  total           Float
-  status          String   @default("PENDING")
-  trackingNumber  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
 model Banner {
-  id           String   @id @default(cuid())
-  title        String
-  subtitle     String?
-  description  String?
-  image        String
-  mobileImage  String?
-  link         String?
-  buttonText   String?
-  isActive     Boolean  @default(true)
-  order        Int      @default(0)
-  startDate    DateTime?
-  endDate      DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String   @unique
+  subtitle    String?
+  description String?
+  image       String
+  mobileImage String?
+  link        String?
+  buttonText  String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Testimonial {
@@ -223,24 +151,6 @@ model Testimonial {
   updatedAt  DateTime @updatedAt
 }
 
-model Review {
-  id          String   @id @default(cuid())
-  userId      String?
-  userName    String
-  userAvatar  String?
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  rating      Int
-  title       String?
-  content     String
-  images      String?
-  isVerified  Boolean  @default(false)
-  isApproved  Boolean  @default(true)
-  helpful     Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
 model SiteSetting {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -254,7 +164,7 @@ model SiteSetting {
 
 model FAQ {
   id        String   @id @default(cuid())
-  question  String
+  question  String   @unique
   answer    String
   category  String?
   order     Int      @default(0)
@@ -263,22 +173,19 @@ model FAQ {
   updatedAt DateTime @updatedAt
 }
 
-model Cart {
-  id        String     @id @default(cuid())
-  userId    String?
-  sessionId String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  items     CartItem[]
-}
-
-model CartItem {
-  id        String @id @default(cuid())
-  cartId    String
-  cart      Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    @default("PERCENTAGE")
+  discountValue Float
+  minPurchase   Float?
+  maxDiscount   Float?
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiryDate    DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model ContactMessage {

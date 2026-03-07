@@ -1,65 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
-// GET /api/banners - Get all banners
 export async function GET() {
   try {
-    const banners = await db.banner.findMany({
+    const banners = await prisma.banner.findMany({
       where: { isActive: true },
       orderBy: { order: 'asc' },
     });
-
     return NextResponse.json(banners);
   } catch (error) {
-    console.error('Get banners error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Banners error:', error);
+    return NextResponse.json([]);
   }
 }
 
-// POST /api/banners - Create new banner (Admin only)
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { title, subtitle, image, link, isActive, order } = body;
-
-    // Validate required fields
-    if (!title || !image) {
-      return NextResponse.json(
-        { error: 'Title and image are required' },
-        { status: 400 }
-      );
-    }
-
-    const banner = await db.banner.create({
-      data: {
-        title,
-        subtitle: subtitle || null,
-        image,
-        link: link || null,
-        isActive: isActive !== false,
-        order: order || 0,
-      },
-    });
-
+    const data = await request.json();
+    const banner = await prisma.banner.create({ data });
     return NextResponse.json(banner);
   } catch (error) {
     console.error('Create banner error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create banner' }, { status: 500 });
   }
 }

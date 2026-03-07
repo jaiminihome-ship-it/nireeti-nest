@@ -1,65 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
-// GET /api/testimonials - Get all testimonials
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const testimonials = await db.testimonial.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const featured = searchParams.get('featured') === 'true';
 
+    const where = { isActive: true, ...(featured && { isFeatured: true }) };
+    
+    const testimonials = await prisma.testimonial.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    
     return NextResponse.json(testimonials);
   } catch (error) {
-    console.error('Get testimonials error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Testimonials error:', error);
+    return NextResponse.json([]);
   }
 }
 
-// POST /api/testimonials - Create new testimonial (Admin only)
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { name, role, content, avatar, rating, isActive } = body;
-
-    // Validate required fields
-    if (!name || !content) {
-      return NextResponse.json(
-        { error: 'Name and content are required' },
-        { status: 400 }
-      );
-    }
-
-    const testimonial = await db.testimonial.create({
-      data: {
-        name,
-        role: role || null,
-        content,
-        avatar: avatar || null,
-        rating: rating || 5,
-        isActive: isActive !== false,
-      },
-    });
-
+    const data = await request.json();
+    const testimonial = await prisma.testimonial.create({ data });
     return NextResponse.json(testimonial);
   } catch (error) {
     console.error('Create testimonial error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create testimonial' }, { status: 500 });
   }
 }

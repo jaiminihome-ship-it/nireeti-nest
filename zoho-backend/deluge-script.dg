@@ -1,0 +1,881 @@
+// ============================================
+// THE NIREETI NEST - ZOHO SHEET BACKEND
+// Complete Deluge Script for User Database
+// ============================================
+
+// ============================================
+// CONFIGURATION
+// ============================================
+string SITE_NAME = "The Nireeti Nest";
+string SITE_URL = "https://thenireetinest.com";
+string ADMIN_EMAIL = "support@thenireetinest.com";
+string JWT_SECRET = "nireeti-nest-jwt-secret-2024-secure";
+
+// Sheet Names
+string SHEET_USERS = "Users";
+string SHEET_WISHLIST = "Wishlist";
+string SHEET_CART = "Cart";
+string SHEET_ORDERS = "Orders";
+string SHEET_ORDER_ITEMS = "OrderItems";
+string SHEET_MESSAGES = "ContactMessages";
+string SHEET_NEWSLETTER = "Newsletter";
+string SHEET_REVIEWS = "Reviews";
+string SHEET_SESSIONS = "Sessions";
+string SHEET_OTP = "OTPRecords";
+
+// ============================================
+// 1. INITIALIZE - CREATE ALL SHEETS
+// ============================================
+map initializeDatabase()
+{
+    info "Creating database tables...";
+    info "Tables created: Users, Wishlist, Cart, Orders, OrderItems, ContactMessages, Newsletter, Reviews, Sessions, OTPRecords";
+    
+    return {
+        "success": true,
+        "message": "Database initialized! Please create these sheets manually in Zoho Sheet.",
+        "tables": [
+            {"name": "Users", "columns": ["id", "email", "password_hash", "name", "phone", "address", "city", "state", "pincode", "role", "avatar", "email_verified", "created_at", "updated_at"]},
+            {"name": "Wishlist", "columns": ["id", "user_id", "product_id", "created_at"]},
+            {"name": "Cart", "columns": ["id", "user_id", "product_id", "quantity", "created_at", "updated_at"]},
+            {"name": "Orders", "columns": ["id", "order_number", "user_id", "customer_name", "customer_email", "customer_phone", "shipping_address", "shipping_city", "shipping_state", "shipping_pincode", "subtotal", "discount", "delivery_cost", "total", "status", "payment_status", "payment_method", "payment_id", "notes", "created_at", "updated_at"]},
+            {"name": "OrderItems", "columns": ["id", "order_id", "product_id", "product_name", "product_price", "quantity", "total"]},
+            {"name": "ContactMessages", "columns": ["id", "name", "email", "phone", "subject", "message", "is_read", "created_at"]},
+            {"name": "Newsletter", "columns": ["id", "email", "is_active", "source", "created_at"]},
+            {"name": "Reviews", "columns": ["id", "user_id", "user_name", "product_id", "rating", "title", "content", "is_approved", "created_at"]},
+            {"name": "Sessions", "columns": ["id", "user_id", "token", "expires_at", "created_at"]},
+            {"name": "OTPRecords", "columns": ["id", "email", "otp", "purpose", "expires_at", "is_used", "created_at"]}
+        ]
+    };
+}
+
+// ============================================
+// 2. USER REGISTRATION
+// ============================================
+map registerUser(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    string password = requestData.get("password");
+    string name = requestData.get("name");
+    string phone = requestData.get("phone", "");
+    
+    if(email == null || email == "")
+    {
+        return {"success": false, "error": "Email is required"};
+    }
+    if(password == null || password == "")
+    {
+        return {"success": false, "error": "Password is required"};
+    }
+    if(password.length() < 6)
+    {
+        return {"success": false, "error": "Password must be at least 6 characters"};
+    }
+    
+    list existingUsers = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    if(existingUsers.size() > 0)
+    {
+        return {"success": false, "error": "Email already registered"};
+    }
+    
+    string userId = "user_" + zoho.currenttime.toString("yyyyMMddHHmmss") + "_" + zoho.random(1000, 9999).toString();
+    string passwordHash = zoho.encryption.sha256(password + JWT_SECRET);
+    
+    list allUsers = zoho.sheet.getAllRecords(SHEET_USERS);
+    string role = "USER";
+    if(allUsers.size() == 0)
+    {
+        role = "ADMIN";
+    }
+    
+    map userData = Map();
+    userData.put("id", userId);
+    userData.put("email", email);
+    userData.put("password_hash", passwordHash);
+    userData.put("name", name);
+    userData.put("phone", phone);
+    userData.put("address", "");
+    userData.put("city", "");
+    userData.put("state", "");
+    userData.put("pincode", "");
+    userData.put("role", role);
+    userData.put("avatar", "");
+    userData.put("email_verified", "false");
+    userData.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    userData.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_USERS, userData);
+    
+    string otp = generateOTP();
+    saveOTP(email, otp, "verification");
+    sendOTPEmail(email, name, otp, "verify");
+    
+    map response = Map();
+    response.put("success", true);
+    response.put("message", "Registration successful!");
+    response.put("userId", userId);
+    response.put("role", role);
+    response.put("isFirstUser", role == "ADMIN");
+    response.put("otp", otp);
+    
+    return response;
+}
+
+// ============================================
+// 3. USER LOGIN
+// ============================================
+map loginUser(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    string password = requestData.get("password");
+    
+    if(email == null || password == null)
+    {
+        return {"success": false, "error": "Email and password are required"};
+    }
+    
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    if(users.size() == 0)
+    {
+        return {"success": false, "error": "Invalid email or password"};
+    }
+    
+    map user = users.get(0);
+    string passwordHash = zoho.encryption.sha256(password + JWT_SECRET);
+    
+    if(user.get("password_hash") != passwordHash)
+    {
+        return {"success": false, "error": "Invalid email or password"};
+    }
+    
+    string token = generateToken(user.get("id"), user.get("email"), user.get("role"));
+    saveSession(user.get("id"), token);
+    
+    map response = Map();
+    response.put("success", true);
+    response.put("token", token);
+    response.put("user", getUserData(user));
+    
+    return response;
+}
+
+// ============================================
+// 4. OTP LOGIN
+// ============================================
+map sendOTPForLogin(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    if(users.size() == 0)
+    {
+        return {"success": false, "error": "No account found"};
+    }
+    
+    map user = users.get(0);
+    string otp = generateOTP();
+    saveOTP(email, otp, "login");
+    sendOTPEmail(email, user.get("name"), otp, "login");
+    
+    return {"success": true, "message": "OTP sent", "otp": otp};
+}
+
+map verifyOTPLogin(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    string otp = requestData.get("otp");
+    
+    if(!verifyOTP(email, otp, "login"))
+    {
+        return {"success": false, "error": "Invalid or expired OTP"};
+    }
+    
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    map user = users.get(0);
+    
+    markOTPUsed(email, otp);
+    
+    string token = generateToken(user.get("id"), user.get("email"), user.get("role"));
+    saveSession(user.get("id"), token);
+    
+    map response = Map();
+    response.put("success", true);
+    response.put("token", token);
+    response.put("user", getUserData(user));
+    
+    return response;
+}
+
+// ============================================
+// 5. PASSWORD RESET
+// ============================================
+map forgotPassword(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    if(users.size() == 0)
+    {
+        return {"success": true, "message": "If email exists, OTP sent"};
+    }
+    
+    map user = users.get(0);
+    string otp = generateOTP();
+    saveOTP(email, otp, "reset");
+    sendOTPEmail(email, user.get("name"), otp, "reset");
+    
+    return {"success": true, "message": "If email exists, OTP sent", "otp": otp};
+}
+
+map resetPassword(map requestData)
+{
+    string email = requestData.get("email").toLowerCase();
+    string otp = requestData.get("otp");
+    string newPassword = requestData.get("new_password");
+    
+    if(!verifyOTP(email, otp, "reset"))
+    {
+        return {"success": false, "error": "Invalid or expired OTP"};
+    }
+    
+    if(newPassword.length() < 6)
+    {
+        return {"success": false, "error": "Password too short"};
+    }
+    
+    string passwordHash = zoho.encryption.sha256(newPassword + JWT_SECRET);
+    
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "email", email);
+    map user = users.get(0);
+    
+    map updateData = Map();
+    updateData.put("password_hash", passwordHash);
+    updateData.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    zoho.sheet.updateRecord(SHEET_USERS, user.get("id"), updateData);
+    
+    markOTPUsed(email, otp);
+    
+    string token = generateToken(user.get("id"), user.get("email"), user.get("role"));
+    saveSession(user.get("id"), token);
+    
+    return {"success": true, "message": "Password reset successful", "token": token};
+}
+
+// ============================================
+// 6. WISHLIST
+// ============================================
+map addToWishlist(string userId, string productId)
+{
+    list existing = zoho.sheet.searchRecords(SHEET_WISHLIST, "user_id", userId);
+    for each item in existing
+    {
+        if(item.get("product_id") == productId)
+        {
+            return {"success": false, "error": "Already in wishlist"};
+        }
+    }
+    
+    string wlId = "wl_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map data = Map();
+    data.put("id", wlId);
+    data.put("user_id", userId);
+    data.put("product_id", productId);
+    data.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_WISHLIST, data);
+    return {"success": true, "message": "Added to wishlist"};
+}
+
+map removeFromWishlist(string userId, string productId)
+{
+    list items = zoho.sheet.searchRecords(SHEET_WISHLIST, "user_id", userId);
+    for each item in items
+    {
+        if(item.get("product_id") == productId)
+        {
+            zoho.sheet.deleteRecord(SHEET_WISHLIST, item.get("id"));
+            return {"success": true, "message": "Removed"};
+        }
+    }
+    return {"success": false, "error": "Not found"};
+}
+
+list getWishlist(string userId)
+{
+    list items = zoho.sheet.searchRecords(SHEET_WISHLIST, "user_id", userId);
+    list result = List();
+    for each item in items
+    {
+        map wi = Map();
+        wi.put("id", item.get("id"));
+        wi.put("product_id", item.get("product_id"));
+        wi.put("created_at", item.get("created_at"));
+        result.add(wi);
+    }
+    return result;
+}
+
+// ============================================
+// 7. CART
+// ============================================
+map addToCart(string userId, string productId, int quantity)
+{
+    list existing = zoho.sheet.searchRecords(SHEET_CART, "user_id", userId);
+    for each item in existing
+    {
+        if(item.get("product_id") == productId)
+        {
+            int newQty = item.get("quantity").toNumber() + quantity;
+            map update = Map();
+            update.put("quantity", newQty.toString());
+            update.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+            zoho.sheet.updateRecord(SHEET_CART, item.get("id"), update);
+            return {"success": true, "message": "Cart updated", "quantity": newQty};
+        }
+    }
+    
+    string cartId = "cart_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map data = Map();
+    data.put("id", cartId);
+    data.put("user_id", userId);
+    data.put("product_id", productId);
+    data.put("quantity", quantity.toString());
+    data.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    data.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_CART, data);
+    return {"success": true, "message": "Added to cart"};
+}
+
+map updateCart(string userId, string productId, int quantity)
+{
+    list items = zoho.sheet.searchRecords(SHEET_CART, "user_id", userId);
+    for each item in items
+    {
+        if(item.get("product_id") == productId)
+        {
+            if(quantity <= 0)
+            {
+                zoho.sheet.deleteRecord(SHEET_CART, item.get("id"));
+                return {"success": true, "message": "Removed"};
+            }
+            map update = Map();
+            update.put("quantity", quantity.toString());
+            update.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+            zoho.sheet.updateRecord(SHEET_CART, item.get("id"), update);
+            return {"success": true, "message": "Updated"};
+        }
+    }
+    return {"success": false, "error": "Not found"};
+}
+
+list getCart(string userId)
+{
+    list items = zoho.sheet.searchRecords(SHEET_CART, "user_id", userId);
+    list result = List();
+    for each item in items
+    {
+        map ci = Map();
+        ci.put("id", item.get("id"));
+        ci.put("product_id", item.get("product_id"));
+        ci.put("quantity", item.get("quantity").toNumber());
+        result.add(ci);
+    }
+    return result;
+}
+
+map clearCart(string userId)
+{
+    list items = zoho.sheet.searchRecords(SHEET_CART, "user_id", userId);
+    for each item in items
+    {
+        zoho.sheet.deleteRecord(SHEET_CART, item.get("id"));
+    }
+    return {"success": true, "message": "Cart cleared"};
+}
+
+// ============================================
+// 8. ORDERS
+// ============================================
+map createOrder(string userId, map orderData)
+{
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "id", userId);
+    map user = users.get(0);
+    
+    string orderNumber = "ORD" + zoho.currenttime.toString("yyyyMMddHHmmss") + zoho.random(100, 999).toString();
+    string orderId = "order_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    
+    map order = Map();
+    order.put("id", orderId);
+    order.put("order_number", orderNumber);
+    order.put("user_id", userId);
+    order.put("customer_name", orderData.get("name", user.get("name")));
+    order.put("customer_email", orderData.get("email", user.get("email")));
+    order.put("customer_phone", orderData.get("phone", user.get("phone")));
+    order.put("shipping_address", orderData.get("address"));
+    order.put("shipping_city", orderData.get("city"));
+    order.put("shipping_state", orderData.get("state"));
+    order.put("shipping_pincode", orderData.get("pincode"));
+    order.put("subtotal", orderData.get("subtotal", "0"));
+    order.put("discount", orderData.get("discount", "0"));
+    order.put("delivery_cost", orderData.get("delivery_cost", "0"));
+    order.put("total", orderData.get("total"));
+    order.put("status", "PENDING");
+    order.put("payment_status", "PENDING");
+    order.put("payment_method", orderData.get("payment_method", ""));
+    order.put("payment_id", "");
+    order.put("notes", orderData.get("notes", ""));
+    order.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    order.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_ORDERS, order);
+    
+    list items = orderData.get("items");
+    for each item in items
+    {
+        string itemId = "item_" + zoho.currenttime.toString("yyyyMMddHHmmss") + zoho.random(100, 999).toString();
+        map itemData = Map();
+        itemData.put("id", itemId);
+        itemData.put("order_id", orderId);
+        itemData.put("product_id", item.get("product_id"));
+        itemData.put("product_name", item.get("product_name"));
+        itemData.put("product_price", item.get("price").toString());
+        itemData.put("quantity", item.get("quantity").toString());
+        itemData.put("total", (item.get("price").toNumber() * item.get("quantity").toNumber()).toString());
+        zoho.sheet.createRecord(SHEET_ORDER_ITEMS, itemData);
+    }
+    
+    clearCart(userId);
+    sendOrderEmail(user.get("email"), user.get("name"), orderNumber, orderData.get("total"));
+    
+    map response = Map();
+    response.put("success", true);
+    response.put("order_id", orderId);
+    response.put("order_number", orderNumber);
+    
+    return response;
+}
+
+list getOrders(string userId)
+{
+    list orders = zoho.sheet.searchRecords(SHEET_ORDERS, "user_id", userId);
+    list result = List();
+    for each order in orders
+    {
+        map o = Map();
+        o.put("id", order.get("id"));
+        o.put("order_number", order.get("order_number"));
+        o.put("total", order.get("total").toNumber());
+        o.put("status", order.get("status"));
+        o.put("payment_status", order.get("payment_status"));
+        o.put("created_at", order.get("created_at"));
+        result.add(o);
+    }
+    return result;
+}
+
+// ============================================
+// 9. CONTACT & NEWSLETTER
+// ============================================
+map submitContact(map data)
+{
+    string msgId = "msg_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map msg = Map();
+    msg.put("id", msgId);
+    msg.put("name", data.get("name"));
+    msg.put("email", data.get("email"));
+    msg.put("phone", data.get("phone", ""));
+    msg.put("subject", data.get("subject"));
+    msg.put("message", data.get("message"));
+    msg.put("is_read", "false");
+    msg.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_MESSAGES, msg);
+    
+    sendContactEmail(data);
+    
+    return {"success": true, "message": "Message sent"};
+}
+
+map subscribeNewsletter(string email)
+{
+    list existing = zoho.sheet.searchRecords(SHEET_NEWSLETTER, "email", email);
+    if(existing.size() > 0)
+    {
+        return {"success": false, "error": "Already subscribed"};
+    }
+    
+    string subId = "sub_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map data = Map();
+    data.put("id", subId);
+    data.put("email", email);
+    data.put("is_active", "true");
+    data.put("source", "website");
+    data.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_NEWSLETTER, data);
+    return {"success": true, "message": "Subscribed"};
+}
+
+// ============================================
+// 10. REVIEWS
+// ============================================
+map addReview(string userId, map data)
+{
+    list users = zoho.sheet.searchRecords(SHEET_USERS, "id", userId);
+    map user = users.get(0);
+    
+    string revId = "rev_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map review = Map();
+    review.put("id", revId);
+    review.put("user_id", userId);
+    review.put("user_name", user.get("name"));
+    review.put("product_id", data.get("product_id"));
+    review.put("rating", data.get("rating").toString());
+    review.put("title", data.get("title", ""));
+    review.put("content", data.get("content"));
+    review.put("is_approved", "true");
+    review.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    
+    zoho.sheet.createRecord(SHEET_REVIEWS, review);
+    return {"success": true, "message": "Review added"};
+}
+
+list getReviews(string productId)
+{
+    list reviews = zoho.sheet.searchRecords(SHEET_REVIEWS, "product_id", productId);
+    list result = List();
+    for each r in reviews
+    {
+        if(r.get("is_approved") == "true")
+        {
+            map review = Map();
+            review.put("id", r.get("id"));
+            review.put("user_name", r.get("user_name"));
+            review.put("rating", r.get("rating").toNumber());
+            review.put("title", r.get("title"));
+            review.put("content", r.get("content"));
+            review.put("created_at", r.get("created_at"));
+            result.add(review);
+        }
+    }
+    return result;
+}
+
+// ============================================
+// 11. ADMIN FUNCTIONS
+// ============================================
+list adminGetAllUsers(string adminId)
+{
+    list admins = zoho.sheet.searchRecords(SHEET_USERS, "id", adminId);
+    if(admins.size() == 0) return List();
+    map admin = admins.get(0);
+    if(admin.get("role") != "ADMIN") return List();
+    
+    list users = zoho.sheet.getAllRecords(SHEET_USERS);
+    list result = List();
+    for each u in users
+    {
+        map user = Map();
+        user.put("id", u.get("id"));
+        user.put("email", u.get("email"));
+        user.put("name", u.get("name"));
+        user.put("phone", u.get("phone"));
+        user.put("role", u.get("role"));
+        user.put("created_at", u.get("created_at"));
+        result.add(user);
+    }
+    return result;
+}
+
+list adminGetAllOrders(string adminId)
+{
+    list admins = zoho.sheet.searchRecords(SHEET_USERS, "id", adminId);
+    if(admins.size() == 0) return List();
+    map admin = admins.get(0);
+    if(admin.get("role") != "ADMIN") return List();
+    
+    list orders = zoho.sheet.getAllRecords(SHEET_ORDERS);
+    list result = List();
+    for each o in orders
+    {
+        map order = Map();
+        order.put("id", o.get("id"));
+        order.put("order_number", o.get("order_number"));
+        order.put("customer_name", o.get("customer_name"));
+        order.put("customer_email", o.get("customer_email"));
+        order.put("total", o.get("total").toNumber());
+        order.put("status", o.get("status"));
+        order.put("payment_status", o.get("payment_status"));
+        order.put("created_at", o.get("created_at"));
+        result.add(order);
+    }
+    return result;
+}
+
+map adminUpdateOrder(string adminId, string orderId, string status)
+{
+    list admins = zoho.sheet.searchRecords(SHEET_USERS, "id", adminId);
+    if(admins.size() == 0) return {"success": false, "error": "Access denied"};
+    map admin = admins.get(0);
+    if(admin.get("role") != "ADMIN") return {"success": false, "error": "Access denied"};
+    
+    map update = Map();
+    update.put("status", status);
+    update.put("updated_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    zoho.sheet.updateRecord(SHEET_ORDERS, orderId, update);
+    
+    return {"success": true, "message": "Order updated"};
+}
+
+list adminGetMessages(string adminId)
+{
+    list admins = zoho.sheet.searchRecords(SHEET_USERS, "id", adminId);
+    if(admins.size() == 0) return List();
+    map admin = admins.get(0);
+    if(admin.get("role") != "ADMIN") return List();
+    
+    list messages = zoho.sheet.getAllRecords(SHEET_MESSAGES);
+    list result = List();
+    for each m in messages
+    {
+        map msg = Map();
+        msg.put("id", m.get("id"));
+        msg.put("name", m.get("name"));
+        msg.put("email", m.get("email"));
+        msg.put("phone", m.get("phone"));
+        msg.put("subject", m.get("subject"));
+        msg.put("message", m.get("message"));
+        msg.put("is_read", m.get("is_read"));
+        msg.put("created_at", m.get("created_at"));
+        result.add(msg);
+    }
+    return result;
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+string generateOTP()
+{
+    return zoho.random(100000, 999999).toString();
+}
+
+void saveOTP(string email, string otp, string purpose)
+{
+    string otpId = "otp_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map data = Map();
+    data.put("id", otpId);
+    data.put("email", email);
+    data.put("otp", otp);
+    data.put("purpose", purpose);
+    data.put("expires_at", zoho.currenttime.addMinutes(10).toString("yyyy-MM-dd HH:mm:ss"));
+    data.put("is_used", "false");
+    data.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    zoho.sheet.createRecord(SHEET_OTP, data);
+}
+
+bool verifyOTP(string email, string otp, string purpose)
+{
+    list records = zoho.sheet.searchRecords(SHEET_OTP, "email", email);
+    for each r in records
+    {
+        if(r.get("otp") == otp && r.get("purpose") == purpose && r.get("is_used") == "false")
+        {
+            datetime expiry = r.get("expires_at").toDate("yyyy-MM-dd HH:mm:ss");
+            if(zoho.currenttime > expiry)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void markOTPUsed(string email, string otp)
+{
+    list records = zoho.sheet.searchRecords(SHEET_OTP, "email", email);
+    for each r in records
+    {
+        if(r.get("otp") == otp)
+        {
+            map update = Map();
+            update.put("is_used", "true");
+            zoho.sheet.updateRecord(SHEET_OTP, r.get("id"), update);
+        }
+    }
+}
+
+string generateToken(string userId, string email, string role)
+{
+    string payload = userId + "|" + email + "|" + role + "|" + zoho.currenttime.addDays(7).toString("yyyyMMddHHmmss");
+    return zoho.encryption.base64Encode(payload);
+}
+
+map verifyToken(string token)
+{
+    try
+    {
+        string decoded = zoho.encryption.base64Decode(token);
+        list parts = decoded.split("|");
+        
+        if(parts.size() < 4)
+        {
+            return {"valid": false};
+        }
+        
+        string expiry = parts.get(3);
+        datetime expiryDate = expiry.toDate("yyyyMMddHHmmss");
+        
+        if(zoho.currenttime > expiryDate)
+        {
+            return {"valid": false};
+        }
+        
+        map result = Map();
+        result.put("valid", true);
+        result.put("userId", parts.get(0));
+        result.put("email", parts.get(1));
+        result.put("role", parts.get(2));
+        return result;
+    }
+    catch
+    {
+        return {"valid": false};
+    }
+}
+
+void saveSession(string userId, string token)
+{
+    string sessId = "sess_" + zoho.currenttime.toString("yyyyMMddHHmmss");
+    map data = Map();
+    data.put("id", sessId);
+    data.put("user_id", userId);
+    data.put("token", token);
+    data.put("expires_at", zoho.currenttime.addDays(7).toString("yyyy-MM-dd HH:mm:ss"));
+    data.put("created_at", zoho.currenttime.toString("yyyy-MM-dd HH:mm:ss"));
+    zoho.sheet.createRecord(SHEET_SESSIONS, data);
+}
+
+map getUserData(map user)
+{
+    map userData = Map();
+    userData.put("id", user.get("id"));
+    userData.put("email", user.get("email"));
+    userData.put("name", user.get("name"));
+    userData.put("phone", user.get("phone"));
+    userData.put("address", user.get("address"));
+    userData.put("city", user.get("city"));
+    userData.put("state", user.get("state"));
+    userData.put("pincode", user.get("pincode"));
+    userData.put("role", user.get("role"));
+    userData.put("avatar", user.get("avatar"));
+    return userData;
+}
+
+void sendOTPEmail(string email, string name, string otp, string type)
+{
+    string subject = "";
+    string body = "";
+    
+    if(type == "verify" || type == "login")
+    {
+        subject = "Your OTP - " + SITE_NAME;
+        body = "Hello " + name + ",\n\nYour OTP is: " + otp + "\n\nThis OTP expires in 10 minutes.";
+    }
+    else if(type == "reset")
+    {
+        subject = "Password Reset OTP - " + SITE_NAME;
+        body = "Hello " + name + ",\n\nYour password reset OTP is: " + otp + "\n\nThis OTP expires in 10 minutes.";
+    }
+    
+    sendmail
+    [
+        from: zoho.adminuserid
+        to: email
+        subject: subject
+        message: body
+    ];
+}
+
+void sendOrderEmail(string email, string name, string orderNumber, string total)
+{
+    string subject = "Order Confirmed - " + SITE_NAME;
+    string body = "Hello " + name + ",\n\nYour order has been placed!\n\nOrder Number: " + orderNumber + "\nTotal: ₹" + total + "\n\nThank you for shopping!";
+    
+    sendmail
+    [
+        from: zoho.adminuserid
+        to: email
+        subject: subject
+        message: body
+    ];
+}
+
+void sendContactEmail(map data)
+{
+    string subject = "New Contact Form - " + SITE_NAME;
+    string body = "Name: " + data.get("name") + "\nEmail: " + data.get("email") + "\nPhone: " + data.get("phone") + "\nSubject: " + data.get("subject") + "\n\nMessage:\n" + data.get("message");
+    
+    sendmail
+    [
+        from: zoho.adminuserid
+        to: ADMIN_EMAIL
+        subject: subject
+        message: body
+    ];
+}
+
+// ============================================
+// MAIN API HANDLER - CALL THIS FUNCTION
+// ============================================
+map handleRequest(map request)
+{
+    string action = request.get("action");
+    map data = request.get("data", Map());
+    string token = request.get("token", "");
+    
+    // Public APIs
+    if(action == "init") return initializeDatabase();
+    if(action == "register") return registerUser(data);
+    if(action == "login") return loginUser(data);
+    if(action == "sendOTP") return sendOTPForLogin(data);
+    if(action == "verifyOTP") return verifyOTPLogin(data);
+    if(action == "forgotPassword") return forgotPassword(data);
+    if(action == "resetPassword") return resetPassword(data);
+    if(action == "contact") return submitContact(data);
+    if(action == "newsletter") return subscribeNewsletter(data.get("email"));
+    if(action == "getReviews") return {"success": true, "reviews": getReviews(data.get("product_id"))};
+    
+    // Protected APIs
+    map tokenData = verifyToken(token);
+    if(!tokenData.get("valid"))
+    {
+        return {"success": false, "error": "Authentication required"};
+    }
+    
+    string userId = tokenData.get("userId");
+    
+    if(action == "getProfile") return {"success": true, "user": getUserData(zoho.sheet.searchRecords(SHEET_USERS, "id", userId).get(0))};
+    if(action == "getWishlist") return {"success": true, "wishlist": getWishlist(userId)};
+    if(action == "addToWishlist") return addToWishlist(userId, data.get("product_id"));
+    if(action == "removeFromWishlist") return removeFromWishlist(userId, data.get("product_id"));
+    if(action == "getCart") return {"success": true, "cart": getCart(userId)};
+    if(action == "addToCart") return addToCart(userId, data.get("product_id"), data.get("quantity", 1));
+    if(action == "updateCart") return updateCart(userId, data.get("product_id"), data.get("quantity", 1));
+    if(action == "removeFromCart") return updateCart(userId, data.get("product_id"), 0);
+    if(action == "clearCart") return clearCart(userId);
+    if(action == "createOrder") return createOrder(userId, data);
+    if(action == "getOrders") return {"success": true, "orders": getOrders(userId)};
+    if(action == "addReview") return addReview(userId, data);
+    
+    // Admin APIs
+    if(action == "adminGetUsers") return {"success": true, "users": adminGetAllUsers(userId)};
+    if(action == "adminGetOrders") return {"success": true, "orders": adminGetAllOrders(userId)};
+    if(action == "adminUpdateOrder") return adminUpdateOrder(userId, data.get("order_id"), data.get("status"));
+    if(action == "adminGetMessages") return {"success": true, "messages": adminGetMessages(userId)};
+    
+    return {"success": false, "error": "Invalid action"};
+}

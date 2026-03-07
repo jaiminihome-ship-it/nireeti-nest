@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import HeroSection from '@/components/home/HeroSection';
 import CategoriesSection from '@/components/home/CategoriesSection';
 import BestSellersSection from '@/components/home/BestSellersSection';
@@ -11,20 +11,38 @@ import { useSettingsStore } from '@/store/settings-store';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import type { Banner, Category, Product, Testimonial } from '@/types';
 
+// Empty subscribe for useSyncExternalStore
+const emptySubscribe = () => () => {};
+
+function getClientSnapshot() {
+  return true;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
 export default function Home() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const [newsletterError, setNewsletterError] = useState('');
-  
+
   const { settings } = useSettingsStore();
+
+  // Safe client-side check
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -43,16 +61,16 @@ export default function Home() {
           testimonialsRes.json(),
         ]);
 
-        setBanners(bannersData || []);
-        setCategories(categoriesData || []);
-        
+        setBanners(Array.isArray(bannersData) ? bannersData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+
         // Parse products with images
         const parsedProducts = (productsData?.data || []).map((p: Product) => ({
           ...p,
           images: safeJsonParse<string[]>(p.images as unknown as string, []),
         }));
         setBestSellers(parsedProducts);
-        setTestimonials(testimonialsData || []);
+        setTestimonials(Array.isArray(testimonialsData) ? testimonialsData : []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -60,8 +78,10 @@ export default function Home() {
       }
     }
 
-    fetchData();
-  }, []);
+    if (mounted) {
+      fetchData();
+    }
+  }, [mounted]);
 
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,23 +103,31 @@ export default function Home() {
       } else {
         setNewsletterError(data.error || 'Failed to subscribe');
       }
-    } catch (error) {
+    } catch {
       setNewsletterError('Failed to subscribe. Please try again.');
     } finally {
       setNewsletterLoading(false);
     }
   };
 
-  if (loading) {
+  // Show loading state
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: settings.primaryColor }}></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4 border-amber-600"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
+
+  // Safe access to settings with defaults
+  const primaryColor = settings?.primaryColor || '#B45309';
+  const secondaryColor = settings?.secondaryColor || '#D2691E';
+  const showOurStory = settings?.showOurStory !== false;
+  const showTestimonials = settings?.showTestimonials !== false;
+  const showNewsletter = settings?.showNewsletter !== false;
 
   return (
     <div className="min-h-screen">
@@ -112,20 +140,20 @@ export default function Home() {
       {/* Best Sellers Section */}
       {bestSellers.length > 0 && <BestSellersSection products={bestSellers} />}
 
-      {/* Our Story Section - controlled by admin */}
-      {settings.showOurStory && <OurStorySection />}
+      {/* Our Story Section */}
+      {showOurStory && <OurStorySection />}
 
-      {/* Testimonials Section - controlled by admin */}
-      {settings.showTestimonials && testimonials.length > 0 && (
+      {/* Testimonials Section */}
+      {showTestimonials && testimonials.length > 0 && (
         <TestimonialsSection testimonials={testimonials} />
       )}
 
-      {/* Newsletter Section - controlled by admin */}
-      {settings.showNewsletter && (
-        <section 
+      {/* Newsletter Section */}
+      {showNewsletter && (
+        <section
           className="py-20 text-white"
-          style={{ 
-            background: `linear-gradient(135deg, ${settings.primaryColor}, ${settings.secondaryColor})`
+          style={{
+            background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
           }}
         >
           <div className="container mx-auto px-4 text-center">
@@ -135,7 +163,7 @@ export default function Home() {
             <p className="mb-8 max-w-2xl mx-auto" style={{ opacity: 0.9 }}>
               Be the first to know about new collections, exclusive offers, and design tips.
             </p>
-            
+
             {newsletterSuccess ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="flex items-center gap-2 text-white">
@@ -175,7 +203,7 @@ export default function Home() {
                 </button>
               </form>
             )}
-            
+
             {newsletterError && (
               <p className="mt-4 text-red-200 text-sm">{newsletterError}</p>
             )}
