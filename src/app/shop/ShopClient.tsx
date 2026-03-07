@@ -25,8 +25,14 @@ export default function ShopClient() {
   useEffect(() => {
     fetch('/api/categories')
       .then((res) => res.json())
-      .then((data) => setCategories(data))
-      .catch(console.error);
+      .then((data) => {
+        // Safety check for categories
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error('Categories Fetch Error:', err);
+        setCategories([]);
+      });
   }, []);
 
   // Fetch products
@@ -51,16 +57,18 @@ export default function ShopClient() {
       try {
         const res = await fetch(`/api/products?${params.toString()}`);
         const data = await res.json();
+        
         if (isMounted) {
-          setProducts(data.data || []);
+          // Fix: Handling both {data: []} and direct [] formats
+          const productsArray = Array.isArray(data) ? data : (data?.data || []);
+          setProducts(productsArray);
           setTotalPages(data.totalPages || 1);
         }
       } catch (error) {
-        console.error(error);
+        console.error('Products Fetch Error:', error);
+        if (isMounted) setProducts([]);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -80,7 +88,6 @@ export default function ShopClient() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Page Header */}
       <div className="bg-gradient-to-r from-amber-600 to-amber-800 text-white py-12">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Shop</h1>
@@ -89,7 +96,6 @@ export default function ShopClient() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Filters */}
         <ProductFilter
           categories={categories}
           selectedCategory={selectedCategory}
@@ -104,7 +110,6 @@ export default function ShopClient() {
           onClearFilters={handleClearFilters}
         />
 
-        {/* Products Grid */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
@@ -118,7 +123,7 @@ export default function ShopClient() {
               </div>
             ))}
           </div>
-        ) : products.length === 0 ? (
+        ) : !Array.isArray(products) || products.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No products found</p>
             <button
@@ -136,7 +141,6 @@ export default function ShopClient() {
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-12">
             <Pagination>

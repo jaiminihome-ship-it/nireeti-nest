@@ -9,8 +9,8 @@ interface CategoriesSectionProps {
 }
 
 export default function CategoriesSection({ categories }: CategoriesSectionProps) {
-  // Don't render anything if no categories - admin controls content
-  if (categories.length === 0) {
+  // Fix: Safe Array Check taaki undefined hone par crash na ho
+  if (!Array.isArray(categories) || categories.length === 0) {
     return null;
   }
 
@@ -39,7 +39,7 @@ export default function CategoriesSection({ categories }: CategoriesSectionProps
               {/* Background Image */}
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                style={{ backgroundImage: `url(${category.image})` }}
+                style={{ backgroundImage: `url(${category.image || '/placeholder-category.jpg'})` }}
               />
 
               {/* Overlay */}
@@ -53,8 +53,9 @@ export default function CategoriesSection({ categories }: CategoriesSectionProps
                 <h3 className="text-xl font-bold mb-2 group-hover:text-gray-200 transition-colors">
                   {category.name}
                 </h3>
+                {/* Fix: Adding category description support */}
                 <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                  {category.description}
+                  {category.description || 'Explore our exclusive collection'}
                 </p>
                 <div className="flex items-center font-medium group-hover:opacity-80" style={{ color: 'var(--color-primary)' }}>
                   <span>Explore</span>

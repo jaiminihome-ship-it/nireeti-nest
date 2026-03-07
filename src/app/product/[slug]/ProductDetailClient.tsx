@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCartStore } from '@/store/cart-store';
-import { formatPrice, calculateDiscount } from '@/lib/utils';
+import { formatPrice, calculateDiscount, safeJsonParse } from '@/lib/utils';
 import type { Product, Offer } from '@/types';
 
 interface ProductWithCategory extends Product {
@@ -20,7 +20,7 @@ interface ProductWithCategory extends Product {
   offers?: Offer[];
 }
 
-export default function ProductDetailClient({ params }: { params: Promise<{ slug: string }> }) {
+export default function ProductDetailClient() {
   const resolvedParams = useParams();
   const slug = resolvedParams?.slug as string;
 
@@ -37,11 +37,22 @@ export default function ProductDetailClient({ params }: { params: Promise<{ slug
       fetch(`/api/products/${slug}`)
         .then((res) => res.json())
         .then((data) => {
-          setProduct(data);
+          if (data && !data.error) {
+            // Fix: Images string ko array mein convert karna zaroori hai
+            const parsedProduct = {
+              ...data,
+              images: typeof data.images === 'string' 
+                ? safeJsonParse<string[]>(data.images, []) 
+                : (Array.isArray(data.images) ? data.images : [])
+            };
+            setProduct(parsedProduct);
+          } else {
+            setProduct(null);
+          }
           setLoading(false);
         })
         .catch((err) => {
-          console.error(err);
+          console.error('Fetch Error:', err);
           setLoading(false);
         });
     }
@@ -79,21 +90,24 @@ export default function ProductDetailClient({ params }: { params: Promise<{ slug
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Product not found</h1>
           <Link href="/shop">
-            <Button>Back to Shop</Button>
+            <Button className="bg-amber-600">Back to Shop</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const images = product.images?.length > 0 ? product.images : ['/placeholder.jpg'];
+  // Double Check for Images Array
+  const productImages = Array.isArray(product.images) && product.images.length > 0 
+    ? product.images 
+    : ['/placeholder.jpg'];
+
   const discount = product.comparePrice ? calculateDiscount(product.comparePrice, product.price) : 0;
 
-  // Check for active offers
-  const activeOffer = product.offers?.find((offer) => {
+  const activeOffer = Array.isArray(product.offers) ? product.offers.find((offer) => {
     const now = new Date();
     return offer.isActive && new Date(offer.startDate) <= now && new Date(offer.endDate) >= now;
-  });
+  }) : null;
 
   const finalPrice = activeOffer
     ? activeOffer.discountType === 'PERCENTAGE'
@@ -103,7 +117,6 @@ export default function ProductDetailClient({ params }: { params: Promise<{ slug
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <nav className="flex items-center space-x-2 text-sm">
@@ -111,47 +124,43 @@ export default function ProductDetailClient({ params }: { params: Promise<{ slug
             <span className="text-gray-400">/</span>
             <Link href="/shop" className="text-gray-500 hover:text-amber-600">Shop</Link>
             <span className="text-gray-400">/</span>
-            <Link href={`/shop?category=${product.category?.slug}`} className="text-gray-500 hover:text-amber-600">
-              {product.category?.name}
-            </Link>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900">{product.name}</span>
+            {product.category && (
+              <>
+                <Link href={`/shop?category=${product.category.slug}`} className="text-gray-500 hover:text-amber-600">
+                  {product.category.name}
+                </Link>
+                <span className="text-gray-400">/</span>
+              </>
+            )}
+            <span className="text-gray-900 line-clamp-1">{product.name}</span>
           </nav>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Images Section */}
           <div className="space-y-4">
-            {/* Main Image */}
-            <div className="relative h-[500px] bg-white rounded-2xl overflow-hidden shadow-lg">
+            <div className="relative h-[400px] md:h-[500px] bg-white rounded-2xl overflow-hidden shadow-sm border">
               <img
-                src={images[selectedImage]}
+                src={productImages[selectedImage]}
                 alt={product.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain p-4"
               />
               {discount > 0 && (
                 <Badge className="absolute top-4 left-4 bg-red-500 text-white text-lg px-4 py-1">
                   -{discount}%
                 </Badge>
               )}
-              {activeOffer && (
-                <Badge className="absolute top-4 right-4 bg-amber-600 text-white px-4 py-1">
-                  Special Offer
-                </Badge>
-              )}
             </div>
 
-            {/* Thumbnails */}
-            {images.length > 1 && (
-              <div className="flex space-x-4 overflow-x-auto pb-2">
-                {images.map((image, index) => (
+            {productImages.length > 1 && (
+              <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
+                {productImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedImage === index ? 'border-amber-600' : 'border-gray-200'
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      selectedImage === index ? 'border-amber-600 shadow-md' : 'border-gray-100'
                     }`}
                   >
                     <img src={image} alt="" className="w-full h-full object-cover" />
@@ -161,176 +170,68 @@ export default function ProductDetailClient({ params }: { params: Promise<{ slug
             )}
           </div>
 
-          {/* Product Info */}
           <div className="space-y-6">
-            {/* Title & Rating */}
             <div>
+              <Badge variant="outline" className="mb-2 text-amber-700 border-amber-200 bg-amber-50">
+                {product.category?.name || 'Home Decor'}
+              </Badge>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-amber-400 text-amber-400" />
+                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
-                  <span className="text-sm text-gray-500 ml-2">(24 reviews)</span>
+                  <span className="text-sm text-gray-500 ml-2">(Best Rated)</span>
                 </div>
-                <span className="text-gray-400">|</span>
-                <span className="text-sm text-gray-500">SKU: {product.sku || 'N/A'}</span>
+                <span className="text-gray-300">|</span>
+                <span className="text-sm text-gray-500">SKU: {product.sku || 'NN-CUSTOM'}</span>
               </div>
             </div>
 
-            {/* Price */}
             <div className="flex items-baseline space-x-4">
               <span className="text-3xl font-bold text-amber-600">
-                {formatPrice(activeOffer ? finalPrice : product.price)}
+                {formatPrice(finalPrice)}
               </span>
-              {product.comparePrice && (
+              {product.comparePrice && product.comparePrice > product.price && (
                 <span className="text-xl text-gray-400 line-through">
                   {formatPrice(product.comparePrice)}
                 </span>
               )}
-              {activeOffer && (
-                <Badge className="bg-green-100 text-green-800">
-                  Save {formatPrice(product.price - finalPrice)}
-                </Badge>
-              )}
             </div>
 
-            {/* Offer Info */}
-            {activeOffer && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-amber-800 font-medium">{activeOffer.title}</p>
-                <p className="text-sm text-amber-600">{activeOffer.description}</p>
-              </div>
-            )}
+            <p className="text-gray-600 leading-relaxed">{product.description}</p>
 
-            {/* Description */}
-            <p className="text-gray-600">{product.description}</p>
-
-            {/* Quantity Selector */}
-            <div className="flex items-center space-x-4">
-              <span className="font-medium text-gray-900">Quantity:</span>
-              <div className="flex items-center border rounded-lg">
-                <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="p-2 hover:bg-gray-100"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="px-4 py-2 min-w-[60px] text-center">{quantity}</span>
-                <button
-                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                  className="p-2 hover:bg-gray-100"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+            <div className="flex items-center space-x-4 py-4 border-y border-gray-100">
+              <span className="font-semibold text-gray-900">Quantity</span>
+              <div className="flex items-center border rounded-xl bg-white">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="p-3 hover:text-amber-600"><Minus className="h-4 w-4" /></button>
+                <span className="px-4 font-medium min-w-[50px] text-center">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="p-3 hover:text-amber-600"><Plus className="h-4 w-4" /></button>
               </div>
-              {product.stock < 10 && product.stock > 0 && (
-                <span className="text-orange-600 text-sm">Only {product.stock} left!</span>
-              )}
+              <span className="text-sm text-gray-500">{product.stock} available</span>
             </div>
 
-            {/* Add to Cart */}
-            <div className="flex space-x-4">
-              <Button
-                onClick={handleAddToCart}
-                className="flex-1 h-12 bg-amber-600 hover:bg-amber-700 text-white gap-2"
+            <div className="flex gap-4">
+              <Button 
+                onClick={handleAddToCart} 
+                className="flex-1 h-14 bg-amber-600 hover:bg-amber-700 text-white text-lg rounded-xl shadow-lg shadow-amber-200"
                 disabled={product.stock <= 0}
               >
-                {addedToCart ? (
-                  <>
-                    <Check className="h-5 w-5" />
-                    Added to Cart
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="h-5 w-5" />
-                    Add to Cart
-                  </>
-                )}
+                {addedToCart ? <><Check className="mr-2" /> In Cart</> : <><ShoppingCart className="mr-2" /> Add to Cart</>}
               </Button>
-              <Button variant="outline" size="icon" className="h-12 w-12">
-                <Heart className="h-5 w-5" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-12 w-12">
-                <Share2 className="h-5 w-5" />
-              </Button>
+              <Button variant="outline" className="h-14 w-14 rounded-xl border-gray-200"><Heart className="h-6 w-6 text-gray-400" /></Button>
             </div>
 
-            {/* Guarantee/Warranty */}
-            {(product.guarantee || product.warranty) && (
-              <div className="grid grid-cols-2 gap-4">
-                {product.guarantee && (
-                  <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg">
-                    <Shield className="h-6 w-6 text-green-600" />
-                    <div>
-                      <p className="font-medium text-gray-900">Guarantee</p>
-                      <p className="text-sm text-gray-600">{product.guarantee}</p>
-                    </div>
-                  </div>
-                )}
-                {product.warranty && (
-                  <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg">
-                    <RotateCcw className="h-6 w-6 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-gray-900">Warranty</p>
-                      <p className="text-sm text-gray-600">{product.warranty}</p>
-                    </div>
-                  </div>
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
+                <Truck className="h-5 w-5 text-amber-600" />
+                <span className="text-sm font-medium">Fast Delivery</span>
               </div>
-            )}
-
-            {/* Shipping Info */}
-            <div className="flex items-center space-x-3 p-4 bg-gray-100 rounded-lg">
-              <Truck className="h-6 w-6 text-gray-600" />
-              <div>
-                <p className="font-medium text-gray-900">Free Shipping</p>
-                <p className="text-sm text-gray-600">On orders over $100</p>
+              <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
+                <Shield className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium">Secure Checkout</span>
               </div>
             </div>
-
-            {/* Product Tabs */}
-            <Tabs defaultValue="description" className="mt-8">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="specifications">Specifications</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews</TabsTrigger>
-              </TabsList>
-              <TabsContent value="description" className="p-4 bg-white rounded-lg border">
-                <p className="text-gray-600">{product.description}</p>
-              </TabsContent>
-              <TabsContent value="specifications" className="p-4 bg-white rounded-lg border">
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">Category</span>
-                    <span className="font-medium">{product.category?.name}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">SKU</span>
-                    <span className="font-medium">{product.sku || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">Stock</span>
-                    <span className="font-medium">{product.stock} units</span>
-                  </div>
-                  {product.guarantee && (
-                    <div className="flex justify-between py-2 border-b">
-                      <span className="text-gray-600">Guarantee</span>
-                      <span className="font-medium">{product.guarantee}</span>
-                    </div>
-                  )}
-                  {product.warranty && (
-                    <div className="flex justify-between py-2 border-b">
-                      <span className="text-gray-600">Warranty</span>
-                      <span className="font-medium">{product.warranty}</span>
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              <TabsContent value="reviews" className="p-4 bg-white rounded-lg border">
-                <p className="text-gray-600">No reviews yet. Be the first to review this product!</p>
-              </TabsContent>
-            </Tabs>
           </div>
         </div>
       </div>
