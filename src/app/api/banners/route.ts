@@ -1,26 +1,42 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 
 export async function GET() {
   try {
+    // Check if database is configured
+    if (!isDatabaseConfigured()) {
+      console.error('❌ Database not configured - missing DATABASE_URL');
+      return NextResponse.json(
+        { error: 'Database not configured', details: 'DATABASE_URL environment variable is missing' },
+        { status: 500 }
+      );
+    }
+
     const banners = await prisma.banner.findMany({
       where: { isActive: true },
       orderBy: { order: 'asc' },
     });
     return NextResponse.json(banners);
   } catch (error) {
-    console.error('Banners error:', error);
+    console.error('❌ Banners API Error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
+    });
+    
+    // Return empty array on error so frontend doesn't crash
     return NextResponse.json([]);
   }
 }
 
 export async function POST(request: Request) {
   try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
     const data = await request.json();
-    const banner = await prisma.banner.create({ data });
-    return NextResponse.json(banner);
-  } catch (error) {
-    console.error('Create banner error:', error);
-    return NextResponse.json({ error: 'Failed to create banner' }, { status: 500 });
-  }
-}
+    
+    // Validate required 

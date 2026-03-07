@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 
 const defaultSettings: Record<string, unknown> = {
   siteName: 'The Nireeti Nest',
@@ -25,6 +25,12 @@ const defaultSettings: Record<string, unknown> = {
 
 export async function GET() {
   try {
+    // Check if database is configured
+    if (!isDatabaseConfigured()) {
+      console.error('❌ Database not configured - returning default settings');
+      return NextResponse.json(defaultSettings);
+    }
+
     const settings = await prisma.siteSetting.findMany();
     const result: Record<string, unknown> = { ...defaultSettings };
     
@@ -36,13 +42,23 @@ export async function GET() {
     
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Settings error:', error);
+    console.error('❌ Settings API Error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    // Return default settings on error so frontend doesn't crash
     return NextResponse.json(defaultSettings);
   }
 }
 
 export async function POST(request: Request) {
   try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
     const data = await request.json();
     
     for (const [key, value] of Object.entries(data)) {
@@ -56,7 +72,12 @@ export async function POST(request: Request) {
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Update settings error:', error);
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    console.error('❌ Update settings error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return NextResponse.json(
+      { error: 'Failed to update settings' },
+      { status: 500 }
+    );
   }
 }

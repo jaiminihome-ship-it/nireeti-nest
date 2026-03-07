@@ -1,12 +1,28 @@
-// This is your Prisma schema file
+// Prisma schema for Supabase + Vercel deployment
+// 
+// ENVIRONMENT VARIABLES REQUIRED:
+// 
+// DATABASE_URL (for runtime queries - uses pooler for serverless):
+// postgresql://postgres.[project-ref]:[password]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+// 
+// DIRECT_DATABASE_URL (for migrations - direct connection):
+// postgresql://postgres.[project-ref]:[password]@db.[project-ref].supabase.co:5432/postgres
+// 
+// IMPORTANT FOR VERCEL:
+// - Vercel serverless functions cannot connect to direct Supabase URL (IPv6 issue)
+// - Use pooler URL for DATABASE_URL (this is what Prisma uses at runtime)
+// - For DIRECT_DATABASE_URL, you can use the pooler URL in Vercel (it's only used for migrations)
+// - Run migrations locally with the direct URL, not during Vercel build
+
 generator client {
-  provider = "prisma-client-js"
+  provider= "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_DATABASE_URL")
+  relationMode      = "prisma"
 }
 
 model User {

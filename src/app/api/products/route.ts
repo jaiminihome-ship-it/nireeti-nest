@@ -1,8 +1,25 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, isDatabaseConfigured } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
+    // Check if database is configured
+    if (!isDatabaseConfigured()) {
+      console.error('❌ Database not configured - missing DATABASE_URL');
+      return NextResponse.json(
+        { 
+          error: 'Database not configured', 
+          details: 'DATABASE_URL environment variable is missing',
+          data: [],
+          total: 0,
+          page: 1,
+          limit: 12,
+          totalPages: 0
+        },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const featured = searchParams.get('featured') === 'true';
@@ -44,21 +61,78 @@ export async function GET(request: Request) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Products error:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, limit: 12, totalPages: 0 });
+    // Log detailed error for debugging
+    console.error('❌ Products API Error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
+    });
+    
+    // Return error details in development, generic error in production
+    const errorResponse = process.env.NODE_ENV === 'development'
+      ? { 
+          error: 'Failed to fetch products', 
+          details: error instanceof Error ? error.message : 'Unknown error',
+          data: [],
+          total: 0,
+          page: 1,
+          limit: 12,
+          totalPages: 0
+        }
+      : { 
+          error: 'Failed to fetch products',
+          data: [],
+          total: 0,
+          page: 1,
+          limit: 12,
+          totalPages: 0
+        };
+    
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    
+    // Validate required fields
+    if (!data.name || !data.slug || !data.categoryId) {
+      return NextResponse.json(
+        { error: 'Name, slug, and categoryId are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Handle images array
     if (data.images && Array.isArray(data.images)) {
       data.images = JSON.stringify(data.images);
     }
-    const product = await prisma.product.create({ data, include: { category: true } });
-    return NextResponse.json({ ...product, images: JSON.parse(product.images || '[]') });
+    
+    const product = await prisma.product.create({ 
+      data, 
+      include: { category: true } 
+    });
+    
+    return NextResponse.json({ 
+      ...product, 
+      images: JSON.parse(product.images || '[]') 
+    });
   } catch (error) {
-    console.error('Create product error:', error);
-    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
+    console.error('❌ Create product error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
+    // Handle unique constraint violations
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      return NextResponse.json(
+        { error: 'A product with this slug already exists' },
+        { status: 409 }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to create product' },
+      { status: 500 }
+    );
   }
 }

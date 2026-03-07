@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/coupons - Get all coupons (Admin only)
 export async function GET(request: NextRequest) {
   try {
+    // Check if database is configured
+    if (!isDatabaseConfigured()) {
+      console.error('❌ Database not configured - missing DATABASE_URL');
+      return NextResponse.json(
+        { error: 'Database not configured', details: 'DATABASE_URL environment variable is missing' },
+        { status: 500 }
+      );
+    }
+
     const user = await getCurrentUser();
 
     if (!user || user.role !== 'ADMIN') {
@@ -20,9 +29,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(coupons);
   } catch (error) {
-    console.error('Get coupons error:', error);
+    console.error('❌ Get coupons error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch coupons' },
       { status: 500 }
     );
   }
@@ -31,6 +42,13 @@ export async function GET(request: NextRequest) {
 // POST /api/coupons - Create or validate coupon
 export async function POST(request: NextRequest) {
   try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
 
     // If code and subtotal provided, validate coupon
@@ -149,9 +167,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(coupon);
   } catch (error) {
-    console.error('Create/validate coupon error:', error);
+    console.error('❌ Create/validate coupon error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to process coupon request' },
       { status: 500 }
     );
   }
