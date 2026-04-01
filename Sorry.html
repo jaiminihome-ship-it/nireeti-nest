@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Princess ka Court ⚖️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --pink: #ff4d7d;
+            --soft: #ffe0eb;
+            --yellow: #ffd700;
+            --dark: #2d1b33;
+            --green: #4caf50;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Baloo 2', cursive;
+            background: linear-gradient(135deg, #fff0f5 0%, #fce4f0 50%, #fff0f5 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px 15px 40px;
+            overflow-x: hidden;
+        }
+
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 28px 22px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 15px 40px rgba(255,77,125,0.18);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -30px; right: -30px;
+            width: 120px; height: 120px;
+            background: radial-gradient(circle, #ffe0eb 60%, transparent 100%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        /* ── STEP SCREENS ── */
+        .step { display: none; position: relative; z-index: 1; }
+        .step.active { display: block; }
+
+        .emoji-big { font-size: 58px; text-align: center; margin-bottom: 8px;
+            animation: bounce 1.2s ease-in-out infinite; }
+        @keyframes bounce {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 { color: var(--pink); font-size: 22px; text-align: center;
+            font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+        p  { color: #666; font-size: 15px; line-height: 1.6; text-align: center;
+            font-family: 'Kalam', cursive; }
+
+        .highlight { color: var(--pink); font-weight: 700; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            display: block; width: 100%; padding: 14px;
+            border: none; border-radius: 50px; font-size: 17px;
+            font-weight: 700; cursor: pointer; margin-top: 14px;
+            font-family: 'Baloo 2', cursive; transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-pink { background: var(--pink); color: white;
+            box-shadow: 0 5px 18px rgba(255,77,125,0.35); }
+        .btn-gray { background: #f0f0f0; color: #aaa; }
+        .btn-yellow { background: var(--yellow); color: var(--dark);
+            box-shadow: 0 5px 18px rgba(255,215,0,0.4); }
+        .btn-green { background: var(--green); color: white;
+            box-shadow: 0 5px 18px rgba(76,175,80,0.35); }
+
+        /* ── COURT SCENE ── */
+        .court-box {
+            background: #fff8e1;
+            border: 2.5px dashed #ffc107;
+            border-radius: 18px;
+            padding: 16px;
+            margin: 14px 0;
+            font-family: 'Kalam', cursive;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #333;
+            text-align: left;
+        }
+        .court-box .charge { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+        .court-box .charge span:first-child { font-size: 18px; flex-shrink: 0; }
+
+        /* ── PUNISHMENTS GAME ── */
+        .punish-list { list-style: none; padding: 0; margin: 14px 0; }
+        .punish-list li {
+            background: var(--soft);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            font-family: 'Kalam', cursive;
+            font-size: 15px;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            border: 2.5px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .punish-list li:active { transform: scale(0.97); }
+        .punish-list li.checked {
+            background: #fff0f5;
+            border-color: var(--pink);
+            color: var(--dark);
+        }
+        .punish-list li .tick { font-size: 22px; transition: all 0.3s; }
+
+        /* ── SLAP GAME ── */
+        #slap-area {
+            background: linear-gradient(135deg, #ffe8ef, #fff0f5);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            margin: 16px 0;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        #slap-area:active { transform: scale(0.98); }
+        #slap-face { font-size: 80px; line-height: 1; display: block;
+            transition: transform 0.1s; }
+        #slap-count-display {
+            font-size: 42px; font-weight: 800; color: var(--pink);
+            display: block; margin: 6px 0; }
+        #slap-msg { font-family: 'Kalam', cursive; font-size: 15px; color: #888; min-height: 24px; }
+
+        .slap-particle {
+            position: absolute; pointer-events: none;
+            font-size: 24px;
+            animation: slapFly 0.8s ease-out forwards;
+        }
+        @keyframes slapFly {
+            0%   { opacity:1; transform: translate(0,0) scale(1); }
+            100% { opacity:0; transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(var(--r)); }
+        }
+
+        /* ── PROGRESS BAR ── */
+        .progress-wrap { background: #f5f5f5; border-radius: 50px; height: 10px; overflow:hidden; margin: 12px 0; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--pink), #ff85a1);
+            border-radius: 50px; transition: width 0.4s; }
+
+        /* ── CONTRACT ── */
+        .contract {
+            border: 2px solid var(--pink); border-radius: 18px;
+            padding: 16px; margin: 14px 0; background: #fffafa;
+            font-family: 'Kalam', cursive; font-size: 14px; color: #444;
+            line-height: 1.9; text-align: left;
+        }
+        .contract li { margin-bottom: 4px; }
+
+        /* ── FINAL ── */
+        #final-msg { font-size: 16px; color: #555; text-align: center;
+            font-family: 'Kalam', cursive; line-height: 1.7; margin: 10px 0; }
+
+        /* ── HEARTS ── */
+        .heart-shower { position: fixed; top:0; left:0; width:100%; height:100%;
+            pointer-events: none; z-index: 999; overflow: hidden; }
+        .hh { position: absolute; font-size: 28px;
+            animation: fallDown 2.5s linear forwards; }
+        @keyframes fallDown {
+            0%  { transform: translateY(-40px) rotate(0deg); opacity:1; }
+            100%{ transform: translateY(110vh) rotate(360deg); opacity:0; }
+        }
+
+        /* ── DIVIDER ── */
+        .divider { border: none; border-top: 2px dashed #ffd6e7; margin: 16px 0; }
+
+        /* ── BADGE ── */
+        .badge {
+            display: inline-block; background: var(--pink); color: white;
+            font-size: 12px; font-weight: 700; padding: 3px 12px;
+            border-radius: 50px; margin-bottom: 10px; letter-spacing: 0.5px;
+        }
+
+        /* wiggle */
+        @keyframes wiggle {
+            0%,100%{ transform: rotate(0deg); }
+            25%{ transform: rotate(-8deg); }
+            75%{ transform: rotate(8deg); }
+        }
+        .wiggle { animation: wiggle 0.4s ease; }
+    </style>
+</head>
+<body>
+<div class="card">
+
+    <!-- STEP 1: WELCOME + CHARGES -->
+    <div class="step active" id="step-1">
+        <div class="emoji-big">👑⚖️</div>
+        <div style="text-align:center">
+            <span class="badge">URGENT ROYAL NOTICE</span>
+        </div>
+        <h1>Princess ka Grand Court <br>Shuru Ho Gaya! 🔔</h1>
+        <p>Ek accused ko aaj court mein paish kiya ja raha hai...</p>
+        <div class="court-box">
+            <p style="text-align:left; color:#e65100; font-weight:700; margin-bottom:10px;">📋 Aaropan (Charges Filed):</p>
+            <div class="charge"><span>☕</span><span>Charge #1: Garam ki jagah thanda coffee pilana — jaan-bujh ke nahi, dimag bandh tha</span></div>
+            <div class="charge"><span>🍜</span><span>Charge #2: Galat noodles — IPC section 302 (Noodle Fraud Act)</span></div>
+            <div class="charge"><span>🧠</span><span>Charge #3: Dimag ka Princess ke paas gira dena aur khaali sir reh jaana</span></div>
+            <div class="charge"><span>💘</span><span>Charge #4: Itna pyaar karna ki kuch aur yaad na rahe</span></div>
+        </div>
+        <p>Princess ji, kya aap is case ki judge banegi? <span class="highlight">Aapka insaaf chahiye! 🙏</span></p>
+        <button class="btn btn-pink" onclick="go(2)">Haan, Main Judge Banungi 👩‍⚖️</button>
+        <button class="btn btn-gray" id="escape-btn" onclick="escapeBtn()">Nahi, Maafi nahi milegi 😤</button>
+    </div>
+
+    <!-- STEP 2: SELECT PUNISHMENTS -->
+    <div class="step" id="step-2">
+        <div class="emoji-big">🗳️</div>
+        <h1>Saza Chuno, Princess! <br>Dil bhar ke! 💅</h1>
+        <p>Jo bhi saza theek lage, <span class="highlight">wo select karo</span> (ek se zyada bhi chal sakti hai 😂):</p>
+        <ul class="punish-list" id="punish-list">
+            <li onclick="togglePunish(this)" data-val="100 maafi">
+                <span class="tick">🔲</span> 100 baar "Sorry Babu" bolna mandatory hai
+            </li>
+            <li onclick="togglePunish(this)" data-val="khana">
+                <span class="tick">🔲</span> Agle 7 din ka khaana 100% aapki marzi ka
+            </li>
+            <li onclick="togglePunish(this)" data-val="phone">
+                <span class="tick">🔲</span> Ek ghante phone band, sirf aapko reply karna hai
+            </li>
+            <li onclick="togglePunish(this)" data-val="kisses">
+                <span class="tick">🔲</span> 500 forehead kisses ka debt chadh gaya hai
+            </li>
+            <li onclick="togglePunish(this)" data-val="bakwaas">
+                <span class="tick">🔲</span> Princess jo bole, vahi sach — koi argument nahi!
+            </li>
+            <li onclick="togglePunish(this)" data-val="drama">
+                <span class="tick">🔲</span> Accused public mein "Main pagal hoon" ka board pakde 😂
+            </li>
+        </ul>
+        <div id="punish-progress" style="display:none">
+            <div class="progress-wrap"><div class="progress-bar" id="pbar" style="width:0%"></div></div>
+            <p id="punish-count-txt" style="font-size:13px; color:#aaa; text-align:center;"></p>
+        </div>
+        <button class="btn btn-pink" id="punish-next-btn" onclick="go(3)" style="display:none">
+            Saza Confirm! Ab Pitai Shuru Karo 👊
+        </button>
+    </div>
+
+    <!-- STEP 3: VIRTUAL SLAP GAME -->
+    <div class="step" id="step-3">
+        <div style="text-align:center">
+            <span class="badge">MINI GAME 🎮</span>
+        </div>
+        <h1>Virtual Pitai Time! <br>Tap karo jitna mann kare 💢</h1>
+        <p>10 baar tap karo toh aage badhenge... ya jitna dil kare! 😬</p>
+
+        <div id="slap-area" onclick="doSlap(event)">
+            <span id="slap-face">😬</span>
+            <span id="slap-count-display">0</span>
+            <div id="slap-msg">Tap karo yaar, lagata hoon maafi 🙏</div>
+        </div>
+
+        <div class="progress-wrap">
+            <div class="progress-bar" id="slap-bar" style="width:0%"></div>
+        </div>
+
+        <button class="btn btn-pink" id="slap-next-btn" onclick="go(4)" style="display:none; margin-top:14px;">
+            Theek hai, bahut hua 😭 Aage Chalo
+        </button>
+    </div>
+
+    <!-- STEP 4: CONTRACT -->
+    <div class="step" id="step-4">
+        <div class="emoji-big">📜</div>
+        <h1>Royal Maafi Contract 👑</h1>
+        <p>Princess ji, yeh sacred contract sign karo:</p>
+        <div class="contract">
+            <p style="color:var(--pink); font-weight:700; margin-bottom:8px;">Main, <span id="accused-name">Aapka Pagal</span>, yeh sweekar karta hoon ki:</p>
+            <ol id="contract-list">
+                <li>Mera dimag permanently Princess ke paas girvi rakha hai</li>
+                <li>Coffee ka bohot bada doshi hoon — saza qubool hai</li>
+                <li>Noodle fraud mein mera haath tha (magar dil nahi tha)</li>
+                <li id="contract-extra"></li>
+            </ol>
+        </div>
+        <p><span class="highlight">Sign karke mujhe azaad kar do... 🥺</span></p>
+        <button class="btn btn-pink" onclick="go(5)">Sign with Royal Stamp 💋👑</button>
+    </div>
+
+    <!-- STEP 5: FINAL -->
+    <div class="step" id="step-5">
+        <div class="emoji-big" style="animation: none; font-size:70px;">🎉</div>
+        <h1>Case Closed! <br>Princess ne Maafi Di! 💖</h1>
+        <div id="final-msg">
+            Shukriya Janeman...<br>
+            Tera pyaar hi meri sabse badi saza bhi hai<br>
+            aur sabse badi reward bhi 💕<br><br>
+            Ab coffee sahi aayegi, noodles sahi aayenge...<br>
+            <span class="highlight">...magar tera pyaar to aisa hi chahiye 🥺</span>
+        </div>
+        <hr class="divider">
+        <p style="font-size:13px; color:#ccc;">Verdict: Guilty of Loving Too Much ❤️</p>
+        <button class="btn btn-pink" onclick="celebrate()" style="margin-top:16px;">
+            Ek aur baar dil thaamna 💗
+        </button>
+    </div>
+
+</div>
+
+<div class="heart-shower" id="heart-shower"></div>
+
+<script>
+    let slapCount = 0;
+    const slapFaces = ['😬','😖','😣','😱','🤕','😵','💫','🤯','👺','😭','🥹'];
+    const slapTexts = [
+        'Ow ow ow... 😢',
+        'Theek lag raha hai yaar... iske liye deserve karta hoon',
+        'Haan haan, maaro...',
+        'Aur maaro! Main sunta hoon 😭',
+        'Meri galti thi baba...',
+        'Teri awaaz se dard zyada hota hai yaar 💔',
+        'AAAaaa okay okay OKAY 😱',
+        'Main seedha ho jaunga I PROMISE 😭',
+        'Bas ek aur... shayad... 😬',
+        'Okay sach mein rona aa raha hai 😭',
+        'Tere haath mein jaadu hai, maafi bhi de de 🙏'
+    ];
+
+    let chosenPunishments = [];
+
+    function go(n) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.getElementById('step-' + n).classList.add('active');
+        window.scrollTo({top:0, behavior:'smooth'});
+
+        if (n === 4) buildContract();
+        if (n === 5) celebrate();
+    }
+
+    // ── ESCAPE BUTTON ──
+    let escapeTries = 0;
+    const escapeLines = [
+        'Arey ruko! Ek chance toh do 🙏',
+        'Nahi matlabbb?? Yahi toh main hoon! 😱',
+        'Okay okay main rone lagunga abhi 😭',
+        'Please nahi! Coffee wali galti thi! ☕',
+        'Oye sunoooo! 💔',
+        'Main pagal hoon, meri burai karo par maafi do 😬',
+        'BAABUUUUU 😭😭',
+    ];
+    function escapeBtn() {
+        const btn = document.getElementById('escape-btn');
+        btn.textContent = escapeLines[escapeTries % escapeLines.length] + ' 🥺';
+        escapeTries++;
+        // randomly move button
+        const card = document.querySelector('.card');
+        const maxX = card.offsetWidth - btn.offsetWidth - 20;
+        const maxY = card.offsetHeight - btn.offsetHeight - 20;
+        btn.style.position = 'relative';
+        btn.style.left = (Math.random() * 40 - 20) + 'px';
+        btn.style.top = (Math.random() * 20 - 10) + 'px';
+        btn.classList.add('wiggle');
+        setTimeout(() => btn.classList.remove('wiggle'), 400);
+    }
+
+    // ── PUNISHMENTS ──
+    function togglePunish(el) {
+        el.classList.toggle('checked');
+        if (el.classList.contains('checked')) {
+            el.querySelector('.tick').textContent = '✅';
+            chosenPunishments.push(el.dataset.val);
+        } else {
+            el.querySelector('.tick').textContent = '🔲';
+            chosenPunishments = chosenPunishments.filter(v => v !== el.dataset.val);
+        }
+        const count = document.querySelectorAll('.punish-list li.checked').length;
+        const progress = document.getElementById('punish-progress');
+        const pbar = document.getElementById('pbar');
+        const ptxt = document.getElementById('punish-count-txt');
+        const nextBtn = document.getElementById('punish-next-btn');
+
+        progress.style.display = 'block';
+        pbar.style.width = Math.min(count * 16.6, 100) + '%';
+
+        if (count === 0) {
+            ptxt.textContent = 'Kuch toh chuno ji! 🥺';
+            nextBtn.style.display = 'none';
+        } else if (count === 1) {
+            ptxt.textContent = 'Sirf itni si saza? Dil bada rakho 😅';
+            nextBtn.style.display = 'block';
+        } else if (count === 2) {
+            ptxt.textContent = 'Theek hai... aur chalega 😬';
+            nextBtn.style.display = 'block';
+        } else if (count >= 3) {
+            ptxt.textContent = 'Wah! Dil khoob hai aapka 😭🙏';
+            nextBtn.style.display = 'block';
+        }
+    }
+
+    // ── SLAP GAME ──
+    function doSlap(e) {
+        slapCount++;
+        const face = document.getElementById('slap-face');
+        const countEl = document.getElementById('slap-count-display');
+        const msgEl = document.getElementById('slap-msg');
+        const bar = document.getElementById('slap-bar');
+
+        face.textContent = slapFaces[Math.min(slapCount, slapFaces.length - 1)];
+        countEl.textContent = slapCount;
+        msgEl.textContent = slapTexts[Math.min(slapCount - 1, slapTexts.length - 1)];
+        bar.style.width = Math.min(slapCount * 10, 100) + '%';
+
+        // particle
+        spawnParticle(e);
+
+        // wobble face
+        face.style.transform = 'rotate(' + (Math.random()*30-15) + 'deg) scale(1.2)';
+        setTimeout(() => face.style.transform = '', 200);
+
+        if (slapCount >= 10) {
+            document.getElementById('slap-next-btn').style.display = 'block';
+        }
+    }
+
+    function spawnParticle(e) {
+        const area = document.getElementById('slap-area');
+        const rect = area.getBoundingClientRect();
+        const particle = document.createElement('div');
+        particle.className = 'slap-particle';
+        const emojis = ['💢','✨','⭐','💥','😵','👊','💫'];
+        particle.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+        particle.style.left = (e.clientX - rect.left) + 'px';
+        particle.style.top = (e.clientY - rect.top) + 'px';
+        const tx = (Math.random()*100-50) + 'px';
+        const ty = (Math.random()*80-100) + 'px';
+        const r = (Math.random()*60-30) + 'deg';
+        particle.style.setProperty('--tx', tx);
+        particle.style.setProperty('--ty', ty);
+        particle.style.setProperty('--r', r);
+        area.appendChild(particle);
+        setTimeout(() => particle.remove(), 900);
+    }
+
+    // ── CONTRACT ──
+    function buildContract() {
+        const extras = [
+            'Agle maze ki planning Princess karengi, main bass sunuunga',
+            'Jo cheez order karo, wo milega — no questions asked',
+            'Main officially Princess ka ghar ka servant bhi hoon 😭',
+        ];
+        document.getElementById('contract-extra').textContent =
+            extras[Math.floor(Math.random() * extras.length)];
+    }
+
+    // ── CELEBRATE ──
+    function celebrate() {
+        const shower = document.getElementById('heart-shower');
+        shower.innerHTML = '';
+        const items = ['❤️','💕','💖','💗','🌸','✨','🎀','💝'];
+        for (let i = 0; i < 30; i++) {
+            setTimeout(() => {
+                const h = document.createElement('div');
+                h.className = 'hh';
+                h.textContent = items[Math.floor(Math.random()*items.length)];
+                h.style.left = Math.random()*100 + 'vw';
+                h.style.animationDuration = (1.5 + Math.random()*2) + 's';
+                h.style.animationDelay = Math.random()*1.5 + 's';
+                shower.appendChild(h);
+                setTimeout(() => h.remove(), 4000);
+            }, i * 80);
+        }
+    }
+</script>
+</body>
+</html>
